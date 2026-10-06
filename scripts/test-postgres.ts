@@ -281,7 +281,46 @@ try {
       const page = await context.newPage();
       const errors: string[] = [];
       page.on("pageerror", (e) => errors.push(e.message));
+      await mkdir(".tmp/screenshots", { recursive: true });
+      await page.goto("http://localhost:3100/");
+      await page
+        .getByRole("heading", { name: /Your next idea/ })
+        .waitFor();
+      await page
+        .getByRole("button", { name: "claude-n-codex.com", exact: true })
+        .click();
+      assert(
+        (await page.locator(".connection-console code").innerText()).includes(
+          "/v2/models",
+        ),
+      );
+      await page.getByRole("button", { name: "MWAPI", exact: true }).click();
+      assert(
+        (await page.locator(".connection-console code").innerText()).includes(
+          "/v1/models",
+        ),
+      );
+      await page.screenshot({
+        path: ".tmp/screenshots/home-desktop.png",
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+        "Homepage mobile overflow",
+      );
+      await page.screenshot({
+        path: ".tmp/screenshots/home-mobile.png",
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 1440, height: 1000 });
       await page.goto("http://localhost:3100/login");
+      await page.screenshot({
+        path: ".tmp/screenshots/login-desktop.png",
+        fullPage: true,
+      });
       await page.getByLabel("Username or email").fill("integration-admin");
       await page
         .getByLabel("2FA code")
