@@ -3,7 +3,7 @@ import { z } from "zod";
 import { db } from "../src/lib/db";
 import { users, wallets } from "../src/lib/db/schema";
 const email = z.email().parse(process.env.OWNER_EMAIL).toLowerCase();
-const password = z.string().min(14).max(72).parse(process.env.OWNER_PASSWORD);
+const password = z.string().min(8).max(72).parse(process.env.OWNER_PASSWORD);
 const username = z
   .string()
   .regex(/^[a-zA-Z0-9_-]{3,32}$/)

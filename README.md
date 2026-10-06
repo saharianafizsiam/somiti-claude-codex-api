@@ -24,7 +24,7 @@ npm run dev
 
 Open `http://localhost:3000`. On PowerShell, use `Copy-Item .env.example .env.local`. Do not use development credentials or seeded models in production.
 
-Generate **different** secrets with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Run it independently for each secret. The owner command requires `OWNER_USERNAME`, `OWNER_EMAIL` and an `OWNER_PASSWORD` of 14–72 characters, hashes the password with bcrypt, and creates a zero-balance wallet. It does not overwrite an existing user. Remove `OWNER_PASSWORD` afterward. There is no public registration or default password.
+Generate **different** secrets with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Run it independently for each secret. The owner command requires `OWNER_USERNAME`, `OWNER_EMAIL` and an `OWNER_PASSWORD` of 8–72 characters, hashes the password with bcrypt, and creates a zero-balance wallet. It does not overwrite an existing user. Remove `OWNER_PASSWORD` afterward. There is no public registration or default password.
 
 ## Environment
 

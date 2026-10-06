@@ -1,4 +1,5 @@
-import { generateSecret, generateURI, verifySync } from "otplib";
+import { generateSecret, generateURI } from "otplib";
+import { verifyTotp } from "../src/lib/security/totp";
 import { eq } from "drizzle-orm";
 import { db } from "../src/lib/db";
 import { users, sessions } from "../src/lib/db/schema";
@@ -17,7 +18,7 @@ if (!secret) {
     generateURI({ issuer: "Somiti API", label: email, secret: value }),
   );
 } else {
-  if (!verifySync({ secret, token: process.env.TOTP_CODE || "" }).valid)
+  if (!verifyTotp(secret, process.env.TOTP_CODE || ""))
     throw new Error("Invalid verification code");
   await db().transaction(async (tx) => {
     await tx
