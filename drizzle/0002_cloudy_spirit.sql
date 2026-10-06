@@ -1,0 +1,1 @@
+ALTER TABLE "api_keys" ADD COLUMN "total_allocated_credit" numeric(20, 8) DEFAULT '0' NOT NULL;
