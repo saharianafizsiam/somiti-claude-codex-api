@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Brand } from "@/components/shell";
 import { HomeConnection } from "@/components/home-connection";
 import { KeyRound, ScanLine, Wallet, ArrowUpRight } from "lucide-react";
@@ -14,9 +13,6 @@ export default function Home() {
         <nav aria-label="Main navigation">
           <a href="#connect">API setup</a>
           <a href="#access">Your access</a>
-          <Link className="button button-secondary" href="/login">
-            Sign in <ArrowUpRight size={15} />
-          </Link>
         </nav>
       </header>
       <section className="landing-hero" id="main-content">
@@ -38,9 +34,6 @@ export default function Home() {
             <a className="button button-primary" href="#connect">
               Explore API setup <ArrowUpRight size={17} />
             </a>
-            <Link className="button button-secondary" href="/dashboard">
-              Open workspace
-            </Link>
           </div>
           <p className="hero-footnote">
             Already have access? Your private dashboard link has your key,
@@ -130,8 +123,7 @@ export default function Home() {
           <p>
             Ask your Somiti reseller for access. They provide a private
             dashboard link where you can reveal your key, see your allowed
-            models, and check your credit. Workspace sign-in is for account
-            administrators.
+            models, and check your credit.
           </p>
         </details>
         <details>
@@ -154,7 +146,6 @@ export default function Home() {
       <footer className="landing-footer">
         <Brand />
         <span>Build something worth connecting.</span>
-        <Link href="/login">Workspace sign in</Link>
       </footer>
     </main>
   );
