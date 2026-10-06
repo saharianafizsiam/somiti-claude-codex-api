@@ -22,13 +22,13 @@ import {
   dashboardShares,
   modelAliases,
   models,
-  redeemCodes,
   settings,
   wallets,
 } from "@/lib/db/schema";
 import { pageUser, requireAdmin } from "@/lib/auth";
 import { decrypt } from "@/lib/security/secrets";
-import { remaining, prices } from "@/lib/billing/money";
+import { keyQuota } from "@/lib/providers/quota";
+import { prices } from "@/lib/billing/money";
 import { providerConfigured } from "@/lib/providers/mwapi";
 import {
   ProviderSelector,
@@ -50,18 +50,8 @@ import {
   usd,
 } from "@/components/data";
 import { Button } from "@/components/ui/button";
-import {
-  ActionButton,
-  CopyValue,
-  MoneyForm,
-  SecretReveal,
-} from "@/components/actions";
-import {
-  KeyForm,
-  ModelForm,
-  RedeemForm,
-  SettingsForm,
-} from "@/components/forms";
+import { ActionButton, CopyValue, SecretReveal } from "@/components/actions";
+import { KeyForm, ModelForm, SettingsForm } from "@/components/forms";
 type Params = Record<string, string | undefined>;
 export async function OwnerPage({
   section = "",
@@ -73,6 +63,8 @@ export async function OwnerPage({
   search?: Params;
 }) {
   const user = await pageUser();
+  requireAdmin(user);
+  if (["redeem", "transactions"].includes(section)) notFound();
   if (
     id &&
     id !== "new" &&
@@ -88,9 +80,8 @@ export async function OwnerPage({
     : "30d";
   let content: React.ReactNode;
   if (!section || section === "usage") {
-    const [{ stats, daily, byModel }, [wallet], [counts]] = await Promise.all([
+    const [{ stats, daily, byModel }, [counts]] = await Promise.all([
       usage(ownerWhere, section ? period : "all"),
-      db().select().from(wallets).where(eq(wallets.userId, user.id)),
       db()
         .select({
           count: sql<string>`count(*) filter (where status = 'ACTIVE' and (expires_at is null or expires_at > now()))`,
@@ -123,7 +114,7 @@ export async function OwnerPage({
             <div>
               <h3 style={{ margin: 0 }}>Your workspace is ready to grow</h3>
               <p>
-                Add models, fund your wallet, and create your first customer
+                Add models and attach an upstream key to your first customer
                 key.
               </p>
             </div>
@@ -139,7 +130,7 @@ export async function OwnerPage({
           {section ? (
             <>
               <Metric
-                label="Customer revenue"
+                label="Local charges (legacy)"
                 value={usd(stats.spend)}
                 note="Settled customer charges"
               />
@@ -156,38 +147,22 @@ export async function OwnerPage({
             </>
           ) : (
             <>
-              <Metric
-                label="Available wallet"
-                value={usd(wallet?.balance)}
-                note="Ready to allocate"
-              />
-              <Metric
-                label="Allocated balance"
-                value={usd(wallet?.allocatedBalance)}
-                note="Unspent customer credit"
-              />
-              <Metric
-                label="Customer revenue"
-                value={usd(stats.spend)}
-                note="All-time settled usage"
-              />
-              <Metric
-                label="Estimated profit"
-                value={usd(stats.profit)}
-                note="Revenue less estimated upstream cost"
-              />
+              <Metric label="Active customer keys" value={counts.count} />
+              <Metric label="API requests" value={stats.requests} />
+              <Metric label="Total tokens" value={stats.totalTokens} />
+              <Metric label="Failed requests" value={stats.errors} />
             </>
           )}
         </div>
         <div className="grid-two">
           <section className="panel">
             <h2>
-              Daily spending{" "}
+              Daily requests{" "}
               <span className="muted" style={{ float: "right", fontSize: 12 }}>
                 Last 30 days · UTC
               </span>
             </h2>
-            <Chart daily={daily} />
+            <Chart daily={daily} field="requests" />
           </section>
           <section className="panel">
             <h2>Model activity</h2>
@@ -261,18 +236,6 @@ export async function OwnerPage({
           </h2>
           <LogTable logs={logs.slice(0, 8)} />
         </section>
-        {!section && (
-          <div className="grid-two">
-            <section className="panel">
-              <h2>Fund your wallet</h2>
-              {admin && <MoneyForm action="wallet.topup" label="Add balance" />}
-              <p className="muted">
-                Manual top-ups record credit; they do not collect a payment.
-              </p>
-            </section>
-            <RedeemForm />
-          </div>
-        )}
       </>
     );
   } else if (section === "keys") {
@@ -285,7 +248,7 @@ export async function OwnerPage({
         <>
           <Heading
             title="Create API key"
-            text="Give a customer access with a dedicated credit balance."
+            text="Connect one customer key to one upstream key and API route."
           />
           <KeyForm
             models={all}
@@ -298,7 +261,8 @@ export async function OwnerPage({
         .select()
         .from(apiKeys)
         .where(and(ownerWhere, eq(apiKeys.id, id)));
-      if (!key) notFound();
+      if (!key || key.deletedAt) notFound();
+      const quota = await keyQuota(key);
       const keyLogs = await requestLogs(eq(apiRequests.apiKeyId, id), page);
       const allowed = await availableModels(key);
       const [all, selected, [share], data] = await Promise.all([
@@ -319,9 +283,22 @@ export async function OwnerPage({
             <Badge value={key.status} />
           </Heading>
           <div className="metrics">
-            <Metric label="Available credit" value={usd(remaining(key))} />
-            <Metric label="Used credit" value={usd(key.creditUsed)} />
-            <Metric label="Reserved credit" value={usd(key.creditReserved)} />
+            <Metric
+              label="Available credit"
+              value={
+                quota.remaining === null ? "Unavailable" : usd(quota.remaining)
+              }
+            />
+            <Metric
+              label="Used credit"
+              value={quota.used === null ? "Unavailable" : usd(quota.used)}
+            />
+            <Metric
+              label="API route"
+              value={
+                key.upstreamProvider === "claude-n-codex" ? "API v2" : "API v1"
+              }
+            />
             <Metric label="Requests" value={data.stats.requests} />
             <Metric label="Input tokens" value={data.stats.inputTokens} />
             <Metric label="Output tokens" value={data.stats.outputTokens} />
@@ -334,13 +311,9 @@ export async function OwnerPage({
           <section className="panel">
             <h2>API credential</h2>
             <SecretReveal keyId={id} prefix={key.keyPrefix} />
-            <label>MWAPI base URL</label>
+            <label>Assigned API base URL</label>
             <CopyValue
-              value={`${config?.publicApiUrl || process.env.API_URL || "https://api.somiti.page"}/v1`}
-            />
-            <label>claude-n-codex.com base URL</label>
-            <CopyValue
-              value={`${config?.publicApiUrl || process.env.API_URL || "https://api.somiti.page"}/v2`}
+              value={`${config?.publicApiUrl || process.env.API_URL || "https://api.somiti.page"}/${key.upstreamProvider === "claude-n-codex" ? "v2" : "v1"}`}
             />
             <div className="actions">
               <ActionButton action="key.rotate" data={{ id }} danger>
@@ -353,21 +326,11 @@ export async function OwnerPage({
                 {key.status === "ACTIVE" ? "Disable key" : "Enable key"}
               </ActionButton>
               <ActionButton action="key.archive" data={{ id }} danger>
-                Archive key
+                Delete key
               </ActionButton>
             </div>
           </section>
           <div className="grid-two">
-            <section className="panel">
-              <h2>Manage credit</h2>
-              <MoneyForm action="key.credit" id={id} label="Add credit" />
-              <MoneyForm
-                action="key.credit"
-                id={id}
-                returning
-                label="Return credit"
-              />
-            </section>
             <section className="panel">
               <h2>Customer dashboard</h2>
               <p className="muted">
@@ -408,6 +371,8 @@ export async function OwnerPage({
             models={all}
             initial={{
               name: key.name,
+              upstreamProvider: key.upstreamProvider,
+              hasUpstreamKey: Boolean(key.encryptedUpstreamKey),
               modelAccessMode: key.modelAccessMode,
               rateLimitPerMinute: key.rateLimitPerMinute,
               allowedIps: key.allowedIps,
@@ -416,8 +381,8 @@ export async function OwnerPage({
             }}
           />
           <section className="panel">
-            <h2>Daily spending</h2>
-            <Chart daily={data.daily} />
+            <h2>Daily requests</h2>
+            <Chart daily={data.daily} field="requests" />
           </section>
           <section className="panel">
             <h2>Request history</h2>
@@ -460,10 +425,7 @@ export async function OwnerPage({
                 "Name",
                 "Credential",
                 "Model access",
-                "Allocated",
-                "Used",
-                "Reserved",
-                "Remaining",
+                "API route",
                 "Requests",
                 "Rate limit",
                 "Expiration",
@@ -475,10 +437,11 @@ export async function OwnerPage({
                 </Link>,
                 `${k.keyPrefix}…`,
                 k.modelAccessMode.replaceAll("_", " "),
-                usd(k.allocatedCredit),
-                usd(k.creditUsed),
-                usd(k.creditReserved),
-                usd(remaining(k)),
+                k.upstreamProvider === "mwapi"
+                  ? "API v1"
+                  : k.upstreamProvider === "claude-n-codex"
+                    ? "API v2"
+                    : "Needs setup",
                 k.requests,
                 `${k.rateLimitPerMinute}/min`,
                 k.expiresAt?.toISOString().slice(0, 10) || "Never",
@@ -753,55 +716,6 @@ export async function OwnerPage({
             base={`/dashboard/logs?${query}`}
           />
         </section>
-      </>
-    );
-  } else if (section === "redeem") {
-    const codes = admin
-      ? await db()
-          .select()
-          .from(redeemCodes)
-          .orderBy(desc(redeemCodes.createdAt))
-          .limit(25)
-          .offset((page - 1) * 25)
-      : [];
-    content = (
-      <>
-        <Heading
-          title="Redeem codes"
-          text="Issue credit securely, or redeem a code into your wallet."
-        />
-        <div className="grid-two">
-          <RedeemForm />
-          {admin && <RedeemForm generate />}
-        </div>
-        {admin && (
-          <section className="panel">
-            <DataTable
-              headers={["Code prefix", "Value", "Status", "Expires", "Actions"]}
-              rows={codes.map((c) => [
-                c.codePrefix,
-                usd(c.value),
-                <Badge key="s" value={c.status} />,
-                c.expiresAt?.toISOString().slice(0, 10) || "Never",
-                c.status === "ACTIVE" && (
-                  <ActionButton
-                    key="disable"
-                    action="redeem.disable"
-                    data={{ id: c.id }}
-                    danger
-                  >
-                    Disable
-                  </ActionButton>
-                ),
-              ])}
-            />
-            <Pagination
-              page={page}
-              more={codes.length === 25}
-              base="/dashboard/redeem"
-            />
-          </section>
-        )}
       </>
     );
   } else if (section === "transactions") {

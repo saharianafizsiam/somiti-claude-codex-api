@@ -6,7 +6,8 @@ import { db } from "@/lib/db";
 import { models, modelAliases } from "@/lib/db/schema";
 import { AppError, errorResponse } from "@/lib/errors";
 import { reserve, settle } from "@/lib/billing/ledger";
-import { provider } from "@/lib/providers";
+import { compatibleProvider } from "@/lib/providers/compatible";
+import { decrypt } from "@/lib/security/secrets";
 import { UsageCollector, PublicStream } from "@/lib/providers/sse";
 import { requestIp } from "@/lib/security/ip";
 import { unavailable, type Endpoint } from "@/lib/providers/types";
@@ -127,7 +128,17 @@ export async function gateway(
         "invalid_request",
         "Requested output exceeds model limit.",
       );
-    const upstream = provider(model.provider, model.family);
+    if (!key.encryptedUpstreamKey || key.upstreamProvider !== selectedProvider)
+      throw new AppError(
+        "key_not_configured",
+        "This key is not configured for this API route. Contact your administrator.",
+        403,
+      );
+    const upstream = compatibleProvider(
+      selectedProvider === "mwapi" ? "MWAPI" : "CLAUDE_N_CODEX",
+      model.family,
+      decrypt(key.encryptedUpstreamKey),
+    );
     const reservation = await reserve(
       key.id,
       key.keyHash,
@@ -135,6 +146,10 @@ export async function gateway(
       endpoint,
       maxOutput,
       requestIp(req.headers),
+      {
+        provider: key.upstreamProvider,
+        encryptedKey: key.encryptedUpstreamKey,
+      },
     );
     const abort = new AbortController();
     const timeout = setTimeout(() => abort.abort(), 240_000);

@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { availableModels, sharedKey } from "@/lib/api-keys";
 import { apiRequests, settings } from "@/lib/db/schema";
 import { db } from "@/lib/db";
-import { remaining, prices } from "@/lib/billing/money";
+import { keyQuota } from "@/lib/providers/quota";
 import { usage, requestLogs } from "@/server/queries";
 import { Brand } from "@/components/shell";
 import {
@@ -30,6 +30,7 @@ export default async function Customer({
   const search = await searchParams;
   const key = await sharedKey(shareToken);
   if (!key) notFound();
+  const quota = await keyQuota(key);
   const period = ["today", "7d", "30d", "all"].includes(search.period || "")
     ? search.period!
     : "30d";
@@ -79,23 +80,24 @@ export default async function Customer({
         <div className="metrics">
           <Metric
             label="Available credit"
-            value={usd(remaining(key))}
-            note="Ready to use"
+            value={
+              quota.remaining === null ? "Unavailable" : usd(quota.remaining)
+            }
+            note={
+              quota.checkedAt ? "Live quota" : "Quota could not be retrieved"
+            }
           />
           <Metric
             label="Used credit"
-            value={usd(key.creditUsed)}
-            note="All-time settled usage"
+            value={quota.used === null ? "Unavailable" : usd(quota.used)}
+            note="Account usage"
           />
           <Metric
             label="Total allocated"
-            value={usd(key.totalAllocatedCredit)}
-            note="Lifetime credit allocated"
-          />
-          <Metric
-            label="Reserved credit"
-            value={usd(key.creditReserved)}
-            note="Requests in progress"
+            value={
+              quota.allocated === null ? "Unavailable" : usd(quota.allocated)
+            }
+            note="Account quota"
           />
         </div>
       </section>
@@ -105,14 +107,11 @@ export default async function Customer({
           {key.modelAccessMode.replaceAll("_", " ")} · {key.rateLimitPerMinute}{" "}
           requests/minute
         </p>
-        <label>API v1 base URL</label>
-        <CopyValue value={`${apiUrl}/v1`} />
-        <label>API v2 base URL</label>
-        <CopyValue value={`${apiUrl}/v2`} />
-        <p>
-          Use the route listed beside your model. Both routes share your API
-          key, balance and total usage.
-        </p>
+        <label>API base URL</label>
+        <CopyValue
+          value={`${apiUrl}/${key.upstreamProvider === "claude-n-codex" ? "v2" : "v1"}`}
+        />
+        <p>This key works only with the API route shown above.</p>
         <label>API key</label>
         <SecretReveal shareToken={shareToken} prefix={key.keyPrefix} />
         <p className="setup-note">
@@ -143,8 +142,6 @@ export default async function Customer({
             "Public model ID",
             "API route",
             "Family",
-            "Input / 1M",
-            "Output / 1M",
             "Streaming",
           ]}
           rows={catalog.map((m) => [
@@ -152,8 +149,6 @@ export default async function Customer({
             m.publicModelId,
             m.provider === "claude-n-codex" ? "/v2" : "/v1",
             m.family,
-            usd(prices(m).input, 4),
-            usd(prices(m).output, 4),
             m.supportsStreaming ? "Supported" : "Not supported",
           ])}
         />
@@ -184,10 +179,9 @@ export default async function Customer({
           <Metric label="Input tokens" value={stats.inputTokens} />
           <Metric label="Output tokens" value={stats.outputTokens} />
           <Metric label="Total tokens" value={stats.totalTokens} />
-          <Metric label="Spend" value={usd(stats.spend, 6)} />
           <Metric
-            label="Average request cost"
-            value={usd(stats.averageCost, 6)}
+            label="Account spend (all time)"
+            value={quota.used === null ? "Unavailable" : usd(quota.used)}
           />
           <Metric
             label="Average latency"
@@ -197,8 +191,11 @@ export default async function Customer({
         </div>
         <div className="grid-two">
           <section className="panel">
-            <h2>Daily spending</h2>
-            <Chart daily={daily} />
+            <h2>Daily tokens are recorded in request logs</h2>
+            <p className="muted">
+              Balance and spending above come from your account quota.
+              Per-request monetary costs are not available.
+            </p>
           </section>
           <section className="panel">
             <h2>Daily requests</h2>
@@ -214,7 +211,7 @@ export default async function Customer({
               m.family,
               m.requests,
               m.tokens,
-              usd(m.spend, 6),
+              "�",
             ])}
           />
         </section>
@@ -243,7 +240,7 @@ export default async function Customer({
             l.input ?? "—",
             l.output ?? "—",
             l.total ?? "—",
-            usd(l.cost, 8),
+            "�",
             `${l.latency ?? "—"} ms`,
             <Badge key="s" value={l.status} />,
             l.usage,

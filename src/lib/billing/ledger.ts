@@ -134,6 +134,7 @@ export async function reserve(
   endpoint: string,
   maxOutput: number,
   ip: string | null = null,
+  binding?: { provider: string; encryptedKey: string },
 ) {
   return db().transaction(async (tx) => {
     const [key] = await tx
@@ -142,6 +143,16 @@ export async function reserve(
       .where(eq(apiKeys.id, keyId))
       .for("update");
     validateKey(key, ip);
+    if (
+      binding &&
+      (key.upstreamProvider !== binding.provider ||
+        key.encryptedUpstreamKey !== binding.encryptedKey)
+    )
+      throw new AppError(
+        "key_changed",
+        "Key configuration changed; retry your request.",
+        409,
+      );
     if (
       !key ||
       key.status !== "ACTIVE" ||
@@ -188,7 +199,9 @@ export async function reserve(
       );
     const p = prices(freshModel);
     // The entire configured context is a conservative bound, not a token estimate.
-    const amount = cost(freshModel.contextWindow, maxOutput, p.input, p.output);
+    const amount = binding
+      ? "0"
+      : cost(freshModel.contextWindow, maxOutput, p.input, p.output);
     if (new Decimal(remaining(key)).lt(amount))
       throw new AppError(
         "insufficient_balance",
@@ -212,6 +225,7 @@ export async function reserve(
         modelFamilySnapshot: model.family,
         upstreamModelIdSnapshot: model.upstreamModelId,
         endpoint,
+        upstreamBilled: Boolean(binding),
         inputPriceSnapshot: p.input,
         outputPriceSnapshot: p.output,
         upstreamInputSnapshot: model.upstreamInputPricePerMillion,
@@ -220,15 +234,16 @@ export async function reserve(
         reservedAmount: amount,
       })
       .returning();
-    await tx.insert(balanceTransactions).values({
-      apiKeyId: key.id,
-      type: "RESERVATION",
-      amount,
-      balanceBefore: remaining(key),
-      balanceAfter: money(new Decimal(remaining(key)).minus(amount)),
-      description: "Maximum request cost reserved",
-      referenceId: request.requestId,
-    });
+    if (!binding)
+      await tx.insert(balanceTransactions).values({
+        apiKeyId: key.id,
+        type: "RESERVATION",
+        amount,
+        balanceBefore: remaining(key),
+        balanceAfter: money(new Decimal(remaining(key)).minus(amount)),
+        description: "Maximum request cost reserved",
+        referenceId: request.requestId,
+      });
     return request;
   });
 }
@@ -264,14 +279,15 @@ export async function settle(
       .where(eq(apiKeys.id, r.apiKeyId))
       .for("update");
     const confirmed = usage.status === "CONFIRMED";
-    const actual = confirmed
-      ? cost(
-          usage.inputTokens,
-          usage.outputTokens,
-          r.inputPriceSnapshot,
-          r.outputPriceSnapshot,
-        )
-      : "0";
+    const actual =
+      confirmed && !r.upstreamBilled
+        ? cost(
+            usage.inputTokens,
+            usage.outputTokens,
+            r.inputPriceSnapshot,
+            r.outputPriceSnapshot,
+          )
+        : "0";
     // The reseller absorbs any provider overrun beyond the reserved contract bound.
     const charge = money(Decimal.min(actual, r.reservedAmount));
     const upstream = confirmed
@@ -299,15 +315,16 @@ export async function settle(
         creditUsed: money(new Decimal(key.creditUsed).plus(charge)),
       })
       .where(eq(apiKeys.id, key.id));
-    await tx
-      .update(wallets)
-      .set({
-        totalSpent: money(new Decimal(wallet.totalSpent).plus(charge)),
-        allocatedBalance: money(
-          new Decimal(wallet.allocatedBalance).minus(charge),
-        ),
-      })
-      .where(eq(wallets.id, wallet.id));
+    if (!r.upstreamBilled)
+      await tx
+        .update(wallets)
+        .set({
+          totalSpent: money(new Decimal(wallet.totalSpent).plus(charge)),
+          allocatedBalance: money(
+            new Decimal(wallet.allocatedBalance).minus(charge),
+          ),
+        })
+        .where(eq(wallets.id, wallet.id));
     await tx
       .update(apiRequests)
       .set({
@@ -317,7 +334,9 @@ export async function settle(
         totalTokens: confirmed ? usage.totalTokens : null,
         customerCost: charge,
         upstreamEstimatedCost: upstream,
-        estimatedProfit: money(new Decimal(charge).minus(upstream)),
+        estimatedProfit: r.upstreamBilled
+          ? money(0)
+          : money(new Decimal(charge).minus(upstream)),
         status: errorCode ? "FAILED" : "COMPLETED",
         usageStatus: usage.status,
         httpStatus,
@@ -328,32 +347,35 @@ export async function settle(
         settledAt: new Date(),
       })
       .where(eq(apiRequests.id, r.id));
-    await tx.insert(balanceTransactions).values([
-      {
-        apiKeyId: key.id,
-        type: "RESERVATION_RELEASE",
-        amount: r.reservedAmount,
-        balanceBefore: remaining(key),
-        balanceAfter: money(new Decimal(remaining(key)).plus(r.reservedAmount)),
-        description: "Request reservation released",
-        referenceId: requestId,
-      },
-      {
-        apiKeyId: key.id,
-        type: "API_USAGE",
-        amount: charge,
-        balanceBefore: money(
-          new Decimal(remaining(key)).plus(r.reservedAmount),
-        ),
-        balanceAfter: money(
-          new Decimal(remaining(key)).plus(r.reservedAmount).minus(charge),
-        ),
-        description: confirmed
-          ? "Confirmed provider usage"
-          : "Usage unavailable; no customer charge",
-        referenceId: requestId,
-      },
-    ]);
+    if (!r.upstreamBilled)
+      await tx.insert(balanceTransactions).values([
+        {
+          apiKeyId: key.id,
+          type: "RESERVATION_RELEASE",
+          amount: r.reservedAmount,
+          balanceBefore: remaining(key),
+          balanceAfter: money(
+            new Decimal(remaining(key)).plus(r.reservedAmount),
+          ),
+          description: "Request reservation released",
+          referenceId: requestId,
+        },
+        {
+          apiKeyId: key.id,
+          type: "API_USAGE",
+          amount: charge,
+          balanceBefore: money(
+            new Decimal(remaining(key)).plus(r.reservedAmount),
+          ),
+          balanceAfter: money(
+            new Decimal(remaining(key)).plus(r.reservedAmount).minus(charge),
+          ),
+          description: confirmed
+            ? "Confirmed provider usage"
+            : "Usage unavailable; no customer charge",
+          referenceId: requestId,
+        },
+      ]);
   });
 }
 export async function recoverStale() {

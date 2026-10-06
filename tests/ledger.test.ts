@@ -118,16 +118,64 @@ beforeEach(async () => {
     .returning();
 });
 describe("Gateway integration", () => {
-  it("Lists only authorized models belonging to each provider route", async () => {
+  it("fails closed without a customer credential even when global credentials exist", async () => {
+    const mock = upstream(Response.json({}));
+    await database.update(schema.apiKeys).set({ encryptedUpstreamKey: null });
+    expect((await gateway(request(), "chat/completions")).status).toBe(403);
+    expect(mock).not.toHaveBeenCalled();
+  });
+  it("deleting a customer key disables API access and its share link", async () => {
+    const shared = (await adminAction("key.share", { id: key.id })) as {
+      dashboardUrl: string;
+    };
+    await adminAction("key.archive", { id: key.id });
+    expect(await sharedKey(shared.dashboardUrl.split("/").at(-1)!)).toBeNull();
+    await expect(authenticate(request())).rejects.toThrow("disabled");
+    const [saved] = await database.select().from(schema.apiKeys);
+    expect(saved.encryptedUpstreamKey).toBeNull();
+  });
+  it("stores each customer's upstream key encrypted and forbids switching without a replacement", async () => {
+    const created = (await adminAction("key.create", {
+      name: "Bound",
+      upstreamProvider: "mwapi",
+      upstreamKey: "unique-customer-secret",
+      modelAccessMode: "CLAUDE_ONLY",
+      rateLimitPerMinute: 60,
+    })) as { id: string };
+    const [saved] = await database
+      .select()
+      .from(schema.apiKeys)
+      .where(eq(schema.apiKeys.id, created.id));
+    expect(saved.encryptedUpstreamKey).not.toContain("unique-customer-secret");
+    await expect(
+      adminAction("key.update", {
+        id: created.id,
+        name: "Bound",
+        upstreamProvider: "claude-n-codex",
+        modelAccessMode: "CLAUDE_ONLY",
+        rateLimitPerMinute: 60,
+      }),
+    ).rejects.toThrow("Enter an upstream key");
+  });
+  beforeEach(async () => {
     await database
-      .insert(schema.models)
-      .values({
-        displayName: "Second",
-        publicModelId: "second",
-        upstreamModelId: "private-second",
-        family: "CLAUDE",
-        provider: "claude-n-codex",
+      .update(schema.apiKeys)
+      .set({
+        upstreamProvider: "mwapi",
+        encryptedUpstreamKey: encrypt("customer-specific-key"),
+        allocatedCredit: "0",
       });
+    key.upstreamProvider = "mwapi";
+    key.encryptedUpstreamKey = encrypt("customer-specific-key");
+  });
+  it("Lists only authorized models belonging to the assigned route", async () => {
+    await database.insert(schema.models).values({
+      displayName: "Second",
+      publicModelId: "second",
+      upstreamModelId: "private-second",
+      family: "CLAUDE",
+      provider: "claude-n-codex",
+    });
     const req = () =>
       new Request("http://localhost/models", {
         headers: { authorization: `Bearer ${rawKey}` },
@@ -141,7 +189,7 @@ describe("Gateway integration", () => {
       (await (await modelsV2(req())).json()).data.map(
         (m: { id: string }) => m.id,
       ),
-    ).toEqual(["second"]);
+    ).toEqual([]);
     await database
       .update(schema.apiKeys)
       .set({ modelAccessMode: "OPENAI_ONLY" });
@@ -158,7 +206,13 @@ describe("Gateway integration", () => {
     expect(Number(saved.creditReserved)).toBe(0);
     expect(Number(saved.creditUsed)).toBe(0);
   });
-  it("Routes v2 to the second provider using its model family credential", async () => {
+  it("Routes v2 using only the assigned customer credential", async () => {
+    await database
+      .update(schema.apiKeys)
+      .set({
+        upstreamProvider: "claude-n-codex",
+        encryptedUpstreamKey: encrypt("customer-specific-key"),
+      });
     await database.update(schema.models).set({ provider: "claude-n-codex" });
     vi.stubEnv("CLAUDE_N_CODEX_BASE_URL", "https://second.example");
     vi.stubEnv("CLAUDE_N_CODEX_CLAUDE_API_KEY", "second-claude-secret");
@@ -175,7 +229,7 @@ describe("Gateway integration", () => {
     );
     expect(
       new Headers(mock.mock.calls[0][1]!.headers).get("authorization"),
-    ).toBe("Bearer second-claude-secret");
+    ).toBe("Bearer customer-specific-key");
   });
   function request(body: Record<string, unknown> = {}) {
     return new Request("http://localhost/v1/chat/completions", {
@@ -221,7 +275,7 @@ describe("Gateway integration", () => {
       "provider-test",
     );
     const [k] = await database.select().from(schema.apiKeys);
-    expect(k.creditUsed).toBe("0.00011000");
+    expect(k.creditUsed).toBe("0.00000000");
   });
   it("Rejects forbidden family before contacting upstream", async () => {
     const mock = upstream(Response.json({}));
@@ -270,7 +324,7 @@ describe("Gateway integration", () => {
     expect(output).toContain("Hi");
     expect(output).not.toContain("provider-test");
     const [k] = await database.select().from(schema.apiKeys);
-    expect(k.creditUsed).toBe("0.00012000");
+    expect(k.creditUsed).toBe("0.00000000");
     expect(k.creditReserved).toBe("0.00000000");
   });
   it("Continues usage collection after a customer disconnects", async () => {
@@ -298,7 +352,7 @@ describe("Gateway integration", () => {
     await new Promise((r) => setTimeout(r, 100));
     const [k] = await database.select().from(schema.apiKeys);
     expect(k.creditReserved).toBe("0.00000000");
-    expect(k.creditUsed).toBe("0.00012000");
+    expect(k.creditUsed).toBe("0.00000000");
   });
   it("Applies backpressure while keeping downstream delivery live", async () => {
     let pulls = 0;
@@ -350,6 +404,8 @@ describe("Gateway integration", () => {
     await gateway(request(), "chat/completions");
     const other = (await adminAction("key.create", {
       name: "B",
+      upstreamProvider: "mwapi",
+      upstreamKey: "another-customer-secret",
       modelAccessMode: "OPENAI_ONLY",
       rateLimitPerMinute: 60,
     })) as { id: string };
@@ -450,19 +506,15 @@ describe("Transactional accounting", () => {
     expect(log.customerCost).toBe("0.20000000");
     expect(log.errorCode).toBe("provider_exceeded_reservation");
   });
-  it("Redeems a code once under concurrent requests", async () => {
-    const r = (await adminAction("redeem.create", {
-      amount: "5",
-      quantity: 1,
-    })) as { codes: string[] };
-    const results = await Promise.allSettled(
-      Array.from({ length: 10 }, () =>
-        adminAction("redeem.use", { code: r.codes[0] }),
-      ),
-    );
-    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
-    const [w] = await database.select().from(schema.wallets);
-    expect(w.balance).toBe("15.00000000");
+  it("Disables redeem and local credit mutations", async () => {
+    for (const action of [
+      "redeem.create",
+      "redeem.use",
+      "wallet.topup",
+      "key.credit",
+    ]) {
+      await expect(adminAction(action, {})).rejects.toThrow("Quota is managed");
+    }
   });
 });
 describe("Authentication and tenant isolation", () => {

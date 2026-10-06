@@ -63,6 +63,10 @@ export function KeyForm({
             const r = await callAction(id ? "key.update" : "key.create", {
               id,
               name: f.get("name"),
+              upstreamProvider: f.get("upstreamProvider"),
+              ...(f.get("upstreamKey")
+                ? { upstreamKey: f.get("upstreamKey") }
+                : {}),
               ...(!id && f.get("amount") ? { amount: f.get("amount") } : {}),
               modelAccessMode: mode,
               rateLimitPerMinute: f.get("rateLimitPerMinute"),
@@ -91,9 +95,31 @@ export function KeyForm({
         name="name"
         value={String(initial.name || "")}
       />
-      {!id && (
-        <Field label="Initial credit (USD)" name="amount" required={false} />
-      )}
+      <label>
+        API route
+        <select
+          name="upstreamProvider"
+          defaultValue={String(initial.upstreamProvider || "mwapi")}
+        >
+          <option value="mwapi">API v1 (MWAPI)</option>
+          <option value="claude-n-codex">API v2 (claude-n-codex.com)</option>
+        </select>
+      </label>
+      <Field
+        label={
+          id
+            ? "Upstream API key (leave blank to keep current)"
+            : "Upstream API key"
+        }
+        name="upstreamKey"
+        type="password"
+        required={!id || !initial.hasUpstreamKey}
+      />
+      <p className="muted full">
+        One customer key uses one route and one quota-limited upstream key. The
+        credential is encrypted and never shown to customers. Manage quota at
+        the upstream account.
+      </p>
       <label>
         Model access
         <select value={mode} onChange={(e) => setMode(e.target.value)}>

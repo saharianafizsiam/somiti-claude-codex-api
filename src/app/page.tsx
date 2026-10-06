@@ -27,8 +27,7 @@ export default function Home() {
           </h1>
           <p>
             Bring AI into what you build. Access your available models, manage
-            your API credit, and see exactly what each request costs with SOMITI
-            API.
+            your API quota, and follow your requests with SOMITI API.
           </p>
           <div className="hero-actions">
             <a className="button button-primary" href="#connect">
@@ -65,7 +64,7 @@ export default function Home() {
             </div>
           </div>
           <div className="connection-caption">
-            <Wallet size={15} /> One key. A shared credit balance.
+            <Wallet size={15} /> One key. One assigned API route.
           </div>
         </div>
       </section>
@@ -86,15 +85,15 @@ export default function Home() {
           <Wallet size={23} />
           <h2>Know your balance.</h2>
           <p>
-            Check available, used, and reserved credit from your private
-            customer dashboard.
+            Check your actual remaining quota and account usage from your
+            private customer dashboard.
           </p>
         </article>
         <article>
           <ScanLine size={23} />
           <h2>Follow every request.</h2>
           <p>
-            Review request history, reported token usage, and settled costs in
+            Review request history, reported token usage, and response status in
             one place.
           </p>
         </article>
@@ -107,7 +106,7 @@ export default function Home() {
           </h2>
           <p>
             Choose your model’s API route, then use an enabled model ID from
-            your private dashboard. Both routes use the same Somiti key.
+            your private dashboard. Each key works with its assigned route only.
           </p>
           <p className="muted">
             Model availability and supported endpoints depend on your assigned
@@ -135,11 +134,10 @@ export default function Home() {
           </p>
         </details>
         <details>
-          <summary>Do the two routes have separate balances?</summary>
+          <summary>Can one key use both routes?</summary>
           <p>
-            No. Both routes use your Somiti key’s shared credit balance and
-            access permissions. Your dashboard brings usage from both routes
-            together.
+            No. Each Somiti key is assigned to either API v1 or API v2. Your
+            private dashboard shows its correct URL and actual remaining quota.
           </p>
         </details>
       </section>

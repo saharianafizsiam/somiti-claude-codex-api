@@ -189,10 +189,8 @@ try {
     "/dashboard/models/" + model.id,
     "/dashboard/usage",
     "/dashboard/logs",
-    "/dashboard/transactions",
     "/dashboard/audit",
     "/dashboard/settings",
-    "/dashboard/redeem",
   ]) {
     const r = await fetch("http://localhost:3100" + path, {
       headers: { cookie },
@@ -246,8 +244,8 @@ try {
   const customer = await fetch(dashboardUrl);
   assert.equal(customer.status, 200);
   const html = await customer.text();
-  assert(html.includes("API v1 base URL"));
-  assert(html.includes("API v2 base URL"));
+  assert(html.includes("API base URL"));
+
   assert(
     !/mwapi|claude-n-codex/i.test(html),
     "Customer HTML exposes upstream identity",
@@ -357,7 +355,9 @@ try {
         .getByRole("link", { name: "Create API key", exact: true })
         .click();
       await page.getByLabel("API key name").fill("Browser customer");
-      await page.getByLabel("Initial credit").fill("2");
+      await page
+        .getByLabel("Upstream API key", { exact: true })
+        .fill("test-customer-upstream-key");
       await page
         .getByRole("button", { name: "Create API key", exact: true })
         .click();

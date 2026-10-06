@@ -1,9 +1,7 @@
 import Link from "next/link";
 import {
   Activity,
-  ArrowLeftRight,
   Box,
-  Gift,
   KeyRound,
   LayoutDashboard,
   List,
@@ -25,8 +23,6 @@ const nav = [
   ["Models", "models", Box],
   ["Usage", "usage", Activity],
   ["Request Logs", "logs", List],
-  ["Redeem", "redeem", Gift],
-  ["Transactions", "transactions", ArrowLeftRight],
   ["Audit Logs", "audit", ShieldCheck],
   ["Settings", "settings", Settings],
 ] as const;

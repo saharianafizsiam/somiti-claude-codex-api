@@ -15,7 +15,7 @@ import { decrypt, encrypt, hash, secret } from "@/lib/security/secrets";
 import { addWallet, audit, transfer } from "@/lib/billing/ledger";
 import { AppError } from "@/lib/errors";
 import { amount, keyInput, modelInput } from "./validation";
-import { Decimal, remaining } from "@/lib/billing/money";
+import { Decimal } from "@/lib/billing/money";
 import { upstreamModels } from "@/lib/providers/catalog";
 async function ownKey(tx: Tx, owner: string, id: string) {
   const [key] = await tx
@@ -52,6 +52,17 @@ async function share(tx: Tx, keyId: string, expiresAt: Date | null = null) {
 }
 export async function adminAction(action: string, input: unknown) {
   const user = await requireUser();
+  requireAdmin(user);
+  if (
+    action.startsWith("redeem.") ||
+    action === "wallet.topup" ||
+    action === "key.credit"
+  )
+    throw new AppError(
+      "not_supported",
+      "Quota is managed on the assigned upstream key.",
+      410,
+    );
   if (action === "provider.models") {
     requireAdmin(user);
     const data = z
@@ -64,6 +75,11 @@ export async function adminAction(action: string, input: unknown) {
   }
   if (action === "key.create") {
     const data = keyInput.parse(input);
+    if (!data.upstreamKey)
+      throw new AppError(
+        "invalid_request",
+        "Attach the customer's upstream API key.",
+      );
     const value = secret("sk-somiti_");
     return db().transaction(async (tx) => {
       const [key] = await tx
@@ -74,6 +90,8 @@ export async function adminAction(action: string, input: unknown) {
           keyPrefix: value.slice(0, 20),
           keyHash: hash(value),
           encryptedKey: encrypt(value),
+          upstreamProvider: data.upstreamProvider,
+          encryptedUpstreamKey: encrypt(data.upstreamKey!),
           modelAccessMode: data.modelAccessMode,
           rateLimitPerMinute: data.rateLimitPerMinute,
           allowedIps: data.allowedIps,
@@ -81,7 +99,6 @@ export async function adminAction(action: string, input: unknown) {
         })
         .returning();
       await setModels(tx, key.id, data.modelIds);
-      if (data.amount) await transfer(tx, user.id, key.id, data.amount);
       const dashboardUrl = data.createDashboard
         ? await share(tx, key.id)
         : undefined;
@@ -92,11 +109,24 @@ export async function adminAction(action: string, input: unknown) {
   if (action === "key.update") {
     const data = keyInput.extend({ id: z.string().uuid() }).parse(input);
     return db().transaction(async (tx) => {
-      await ownKey(tx, user.id, data.id);
+      const existing = await ownKey(tx, user.id, data.id);
+      if (
+        !data.upstreamKey &&
+        (!existing.encryptedUpstreamKey ||
+          existing.upstreamProvider !== data.upstreamProvider)
+      )
+        throw new AppError(
+          "invalid_request",
+          "Enter an upstream key when changing provider or configuring this key for the first time.",
+        );
       await tx
         .update(apiKeys)
         .set({
           name: data.name,
+          upstreamProvider: data.upstreamProvider,
+          ...(data.upstreamKey
+            ? { encryptedUpstreamKey: encrypt(data.upstreamKey) }
+            : {}),
           modelAccessMode: data.modelAccessMode,
           rateLimitPerMinute: data.rateLimitPerMinute,
           allowedIps: data.allowedIps,
@@ -132,11 +162,7 @@ export async function adminAction(action: string, input: unknown) {
     return db().transaction(async (tx) => {
       const key = await ownKey(tx, user.id, data.id);
       let result: Record<string, unknown> = { ok: true };
-      if (
-        action === "key.archive" &&
-        (new Decimal(remaining(key)).gt(0) ||
-          new Decimal(key.creditReserved).gt(0))
-      )
+      if (action === "key.archive" && new Decimal(key.creditReserved).gt(0))
         throw new AppError(
           "invalid_request",
           "Wait for pending requests and return unused credit before archiving.",
@@ -168,7 +194,9 @@ export async function adminAction(action: string, input: unknown) {
                 : action === "key.archive"
                   ? "DELETED"
                   : "DISABLED",
-            ...(action === "key.archive" ? { deletedAt: new Date() } : {}),
+            ...(action === "key.archive"
+              ? { deletedAt: new Date(), encryptedUpstreamKey: null }
+              : {}),
           })
           .where(eq(apiKeys.id, key.id));
         if (action === "key.archive")

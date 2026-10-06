@@ -37,12 +37,14 @@ export function configured(
 export function compatibleProvider(
   prefix: Prefix,
   family?: string,
+  credential?: string,
 ): AIProvider {
   return {
     normalizeUsage,
     async send(endpoint, body, signal) {
       const c = configuration(prefix, endpoint, family);
-      if (!configured(prefix, endpoint, family) || !c.path || !c.base)
+      if (credential !== undefined) c.key = credential;
+      if (!c.key || !c.path || !c.base)
         throw new AppError(
           "provider_not_configured",
           "The selected upstream endpoint is not configured.",

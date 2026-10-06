@@ -13,6 +13,14 @@ export const accessMode = z.enum([
 ]);
 export const keyInput = z.object({
   name: z.string().min(1).max(100),
+  upstreamProvider: z.enum(["mwapi", "claude-n-codex"]),
+  upstreamKey: z
+    .string()
+    .trim()
+    .min(10)
+    .max(1000)
+    .regex(/^[\x21-\x7e]+$/)
+    .optional(),
   amount: amount.optional(),
   modelAccessMode: accessMode,
   modelIds: z.array(z.string().uuid()).max(500).default([]),

@@ -14,7 +14,8 @@ export async function GET(req: Request) {
         input_tokens: stats.inputTokens,
         output_tokens: stats.outputTokens,
         total_tokens: stats.totalTokens,
-        spend: stats.spend,
+        spend: null,
+        spend_status: "unavailable",
       },
       { headers: { "Cache-Control": "no-store" } },
     );

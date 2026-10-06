@@ -14,7 +14,7 @@ import { rateLimit } from "../rate-limit";
 import { canAccess } from "../models/access";
 export function validateKey(key: ApiKey | undefined, ip: string | null) {
   if (!key) throw new AppError("invalid_api_key", "Invalid API key.", 401);
-  if (key.status !== "ACTIVE")
+  if (key.status !== "ACTIVE" || key.deletedAt)
     throw new AppError("disabled_api_key", "This API key is disabled.", 403);
   if (key.expiresAt && key.expiresAt <= new Date())
     throw new AppError("expired_api_key", "This API key has expired.", 403);
@@ -73,11 +73,13 @@ export async function availableModels(key: ApiKey) {
       .select()
       .from(models)
       .orderBy(models.sortOrder, models.displayName)
-  ).filter((m) =>
-    canAccess(
-      key,
-      m,
-      selected.map((s) => s.modelId),
-    ),
+  ).filter(
+    (m) =>
+      (!key.upstreamProvider || m.provider === key.upstreamProvider) &&
+      canAccess(
+        key,
+        m,
+        selected.map((s) => s.modelId),
+      ),
   );
 }
