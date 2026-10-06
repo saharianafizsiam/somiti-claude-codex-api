@@ -23,6 +23,7 @@ export function ProviderSelector({ provider }: { provider: string }) {
   );
 }
 export function ProviderDiscovery({ provider }: { provider: string }) {
+  const router = useRouter();
   const [family, setFamily] = useState("CLAUDE");
   const [rows, setRows] = useState<{ id: string; name: string }[]>([]);
   const [message, setMessage] = useState("");
@@ -73,6 +74,37 @@ export function ProviderDiscovery({ provider }: { provider: string }) {
         {busy ? "Loading…" : "Load upstream models"}
       </Button>
       <p role="status">{message}</p>
+      <div className="tabs">
+        {(["saved", "live"] as const).map((source) => (
+          <Button
+            key={source}
+            type="button"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                const result = await callAction("provider.import", {
+                  provider,
+                  family,
+                  source,
+                });
+                setMessage(
+                  `${result.added} new model drafts imported. Existing models were preserved. Review endpoint support and enable the models you want.`,
+                );
+                router.refresh();
+              } catch (e) {
+                setMessage((e as Error).message);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {source === "saved"
+              ? "Import saved catalog (Oct 7)"
+              : "Refresh & import from API"}
+          </Button>
+        ))}
+      </div>
       {rows.map((m) => (
         <div className="model-row" key={m.id}>
           <div>

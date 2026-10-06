@@ -213,3 +213,11 @@ Quota is retrieved server-side from the assigned key's read-only quota endpoint.
 Global upstream keys are used only for admin catalog discovery; they are not a substitute for per-customer credentials. API base origins and generation paths still require server configuration. MWAPI generation paths still require confirmation; read-only quota checks for both providers were verified, but paid generation has not been tested. Customer-visible public model IDs and display names are chosen by the administrator: do not put private provider names or credentials in them.
 
 This section supersedes the earlier reseller wallet, shared-key, and redeem workflow descriptions.
+
+### Customer console and catalog imports
+
+The private customer dashboard uses Overview, Connect, Documentation, and History views without changing its URL. History is paginated through a share-token-protected endpoint. All client props and history responses use explicit public field lists. Unknown quota and costs are never displayed as invented balances or prices.
+
+In admin Models, choose the provider and account, then **Import saved catalog (Oct 7)** to add the catalog fetched on 2026-10-07 (9 v1 Claude IDs, 23 v2 Claude IDs/aliases, 8 v2 OpenAI IDs). **Refresh & import from API** fetches the latest catalog using server environment credentials. Existing provider/model records and their edits are preserved. New records are disabled drafts: review endpoint support and limits in Edit model, then enable. Public IDs are prefixed with `v1/` or `v2/` to distinguish identical upstream IDs; customers use the exact public ID displayed in their dashboard. New manual models can still be created with Add model.
+
+The saved catalog contains model IDs and names only, never credentials. Importing requires no new schema migration beyond the existing upstream-key migration. Catalog listing does not verify generation support or pricing. Deployment and production catalog imports must be performed against your production project; local UI tests use an isolated database.

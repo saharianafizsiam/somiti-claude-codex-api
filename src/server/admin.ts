@@ -17,6 +17,8 @@ import { AppError } from "@/lib/errors";
 import { amount, keyInput, modelInput } from "./validation";
 import { Decimal } from "@/lib/billing/money";
 import { upstreamModels } from "@/lib/providers/catalog";
+import presets from "@/lib/providers/model-presets.json";
+import { importedModel } from "@/lib/providers/import-models";
 async function ownKey(tx: Tx, owner: string, id: string) {
   const [key] = await tx
     .select()
@@ -72,6 +74,47 @@ export async function adminAction(action: string, input: unknown) {
       })
       .parse(input);
     return upstreamModels(data.provider, data.family);
+  }
+  if (action === "provider.import") {
+    const data = z
+      .object({
+        provider: z.enum(["mwapi", "claude-n-codex"]),
+        family: z.enum(["CLAUDE", "OPENAI"]),
+        source: z.enum(["live", "saved"]),
+      })
+      .parse(input);
+    if (data.provider === "mwapi" && data.family !== "CLAUDE")
+      throw new AppError("invalid_request", "Select the Claude account.");
+    const rows =
+      data.source === "live"
+        ? (await upstreamModels(data.provider, data.family)).models
+        : presets.find(
+            (p) => p.provider === data.provider && p.family === data.family,
+          )?.models || [];
+    return db().transaction(async (tx) => {
+      let added = 0;
+      for (const row of rows) {
+        const existing = await tx
+          .select({ id: models.id })
+          .from(models)
+          .where(
+            and(
+              eq(models.provider, data.provider),
+              eq(models.upstreamModelId, row.id),
+            ),
+          )
+          .limit(1);
+        if (existing.length) continue;
+        const inserted = await tx
+          .insert(models)
+          .values(importedModel(data.provider, data.family, row))
+          .onConflictDoNothing()
+          .returning({ id: models.id });
+        added += inserted.length;
+      }
+      await audit(tx, user.id, "IMPORT_MODELS", "provider", data.provider);
+      return { added };
+    });
   }
   if (action === "key.create") {
     const data = keyInput.parse(input);

@@ -181,6 +181,26 @@ try {
   });
   assert.equal(login.status, 200);
   const cookie = login.headers.get("set-cookie")!.split(";")[0];
+  for (const expected of [9, 0]) {
+    const imported: Response = await fetch(
+      "http://localhost:3100/api/admin/provider.import",
+      {
+        method: "POST",
+        headers: {
+          cookie,
+          origin: process.env.APP_URL,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          provider: "mwapi",
+          family: "CLAUDE",
+          source: "saved",
+        }),
+      },
+    );
+    assert.equal(imported.status, 200);
+    assert.equal((await imported.json()).added, expected);
+  }
   for (const path of [
     "/dashboard",
     "/dashboard/keys",
@@ -408,6 +428,45 @@ try {
         path: ".tmp/screenshots/customer-desktop.png",
         fullPage: true,
       });
+      const stableUrl = page.url();
+      for (const section of [
+        "Connect",
+        "Documentation",
+        "History",
+        "Overview",
+      ]) {
+        await page
+          .getByRole("navigation", { name: "Dashboard sections" })
+          .getByRole("button", { name: section, exact: true })
+          .click();
+        await page
+          .getByRole("heading", { name: section, exact: true })
+          .waitFor();
+        assert.equal(page.url(), stableUrl);
+      }
+      const historyResult = await fetch(
+        dashboardUrl.replace("/dashboard/", "/api/share/") + "/history",
+      );
+      assert.equal(historyResult.status, 200);
+      assert.ok(
+        !/encrypted|upstream|mwapi|claude-n-codex/i.test(
+          await historyResult.text(),
+        ),
+      );
+      assert.equal(
+        (await fetch("http://localhost:3100/api/share/invalid/history")).status,
+        404,
+      );
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.screenshot({
+        path: ".tmp/screenshots/customer-mobile.png",
+        fullPage: true,
+      });
+      assert.ok(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      );
       await page.setViewportSize({ width: 390, height: 844 });
       await page.goto("http://localhost:3100/dashboard");
       await page

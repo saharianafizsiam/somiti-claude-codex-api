@@ -1,0 +1,180 @@
+[
+  {
+    "provider": "mwapi",
+    "family": "CLAUDE",
+    "models": [
+      {
+        "id": "claude-haiku-4-5-20251001",
+        "name": "claude-haiku-4-5-20251001"
+      },
+      {
+        "id": "claude-opus-4-6",
+        "name": "claude-opus-4-6"
+      },
+      {
+        "id": "claude-opus-4-7",
+        "name": "claude-opus-4-7"
+      },
+      {
+        "id": "claude-opus-4-8",
+        "name": "claude-opus-4-8"
+      },
+      {
+        "id": "claude-opus-5",
+        "name": "claude-opus-5"
+      },
+      {
+        "id": "claude-opus-5-5",
+        "name": "claude-opus-5-5"
+      },
+      {
+        "id": "claude-sonnet-4-6",
+        "name": "claude-sonnet-4-6"
+      },
+      {
+        "id": "claude-sonnet-5",
+        "name": "claude-sonnet-5"
+      },
+      {
+        "id": "claude-sonnet-5-5",
+        "name": "claude-sonnet-5-5"
+      }
+    ]
+  },
+  {
+    "provider": "claude-n-codex",
+    "family": "CLAUDE",
+    "models": [
+      {
+        "id": "claude-fable-5",
+        "name": "Claude Fable 5"
+      },
+      {
+        "id": "claude-fable-5.1",
+        "name": "Claude Fable 5.1"
+      },
+      {
+        "id": "claude-opus-4-6",
+        "name": "Claude Opus 4.6"
+      },
+      {
+        "id": "claude-opus-4-7",
+        "name": "Claude Opus 4.7"
+      },
+      {
+        "id": "claude-opus-4-8",
+        "name": "Claude Opus 4.8"
+      },
+      {
+        "id": "claude-opus-5",
+        "name": "Claude Opus 5"
+      },
+      {
+        "id": "claude-opus-5-5",
+        "name": "Claude Opus 5.5"
+      },
+      {
+        "id": "claude-opus-5.5",
+        "name": "Claude Opus 5.5"
+      },
+      {
+        "id": "claude-sonnet-4-6",
+        "name": "Claude Sonnet 4.6"
+      },
+      {
+        "id": "claude-sonnet-5",
+        "name": "Claude Sonnet 5"
+      },
+      {
+        "id": "fable",
+        "name": "Claude Fable 5"
+      },
+      {
+        "id": "fable-5",
+        "name": "Claude Fable 5"
+      },
+      {
+        "id": "fable-5.1",
+        "name": "Claude Fable 5.1"
+      },
+      {
+        "id": "opus",
+        "name": "Claude Opus 4.8"
+      },
+      {
+        "id": "opus-4.6",
+        "name": "Claude Opus 4.6"
+      },
+      {
+        "id": "opus-4.7",
+        "name": "Claude Opus 4.7"
+      },
+      {
+        "id": "opus-4.8",
+        "name": "Claude Opus 4.8"
+      },
+      {
+        "id": "opus-5",
+        "name": "Claude Opus 5"
+      },
+      {
+        "id": "opus-5-5",
+        "name": "Claude Opus 5.5"
+      },
+      {
+        "id": "opus-5.5",
+        "name": "Claude Opus 5.5"
+      },
+      {
+        "id": "sonnet",
+        "name": "Claude Sonnet 5"
+      },
+      {
+        "id": "sonnet-4.6",
+        "name": "Claude Sonnet 4.6"
+      },
+      {
+        "id": "sonnet-5",
+        "name": "Claude Sonnet 5"
+      }
+    ]
+  },
+  {
+    "provider": "claude-n-codex",
+    "family": "OPENAI",
+    "models": [
+      {
+        "id": "codex-auto-review",
+        "name": "Codex Auto Review"
+      },
+      {
+        "id": "gpt-5.4",
+        "name": "GPT-5.4"
+      },
+      {
+        "id": "gpt-5.4-mini",
+        "name": "GPT-5.4 Mini"
+      },
+      {
+        "id": "gpt-5.5",
+        "name": "GPT-5.5"
+      },
+      {
+        "id": "gpt-5.6-sol",
+        "name": "GPT-5.6 Sol"
+      },
+      {
+        "id": "gpt-5.6-terra",
+        "name": "GPT-5.6 Terra"
+      },
+      {
+        "id": "gpt-6-astra",
+        "name": "GPT-6 Astra"
+      },
+      {
+        "id": "gpt-6.1-sol",
+        "name": "GPT-6.1 Sol"
+      }
+    ]
+  }
+]
