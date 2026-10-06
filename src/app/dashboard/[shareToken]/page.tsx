@@ -105,9 +105,9 @@ export default async function Customer({
           {key.modelAccessMode.replaceAll("_", " ")} · {key.rateLimitPerMinute}{" "}
           requests/minute
         </p>
-        <label>MWAPI base URL</label>
+        <label>API v1 base URL</label>
         <CopyValue value={`${apiUrl}/v1`} />
-        <label>claude-n-codex.com base URL</label>
+        <label>API v2 base URL</label>
         <CopyValue value={`${apiUrl}/v2`} />
         <p>
           Use the route listed beside your model. Both routes share your API

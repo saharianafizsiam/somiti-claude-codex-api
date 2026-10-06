@@ -3,32 +3,28 @@ import { useState } from "react";
 import { CopyValue } from "./actions";
 
 export function HomeConnection() {
-  const [provider, setProvider] = useState("mwapi");
-  const route = provider === "mwapi" ? "v1" : "v2";
+  const [route, setRoute] = useState("v1");
+
   return (
     <div className="connection-console">
       <div className="console-toolbar">
         <span>Connection guide</span>
         <span className="muted">cURL</span>
       </div>
-      <div
-        className="provider-switch"
-        role="group"
-        aria-label="Example provider"
-      >
+      <div className="provider-switch" role="group" aria-label="API route">
         <button
           type="button"
-          aria-pressed={provider === "mwapi"}
-          onClick={() => setProvider("mwapi")}
+          aria-pressed={route === "v1"}
+          onClick={() => setRoute("v1")}
         >
-          MWAPI
+          API v1
         </button>
         <button
           type="button"
-          aria-pressed={provider !== "mwapi"}
-          onClick={() => setProvider("claude-n-codex")}
+          aria-pressed={route === "v2"}
+          onClick={() => setRoute("v2")}
         >
-          claude-n-codex.com
+          API v2
         </button>
       </div>
       <div aria-live="polite">

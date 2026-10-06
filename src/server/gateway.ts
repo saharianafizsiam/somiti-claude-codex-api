@@ -55,7 +55,7 @@ export async function gateway(
     if (model.provider !== selectedProvider)
       throw new AppError(
         "model_not_allowed",
-        "This model belongs to a different provider. Use its matching API base URL.",
+        "This model uses a different API route. Use the base URL listed for it in your dashboard.",
         403,
       );
     if (!model.enabled || model.archivedAt || !model.visible)

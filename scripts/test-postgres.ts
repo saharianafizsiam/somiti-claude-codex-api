@@ -246,8 +246,12 @@ try {
   const customer = await fetch(dashboardUrl);
   assert.equal(customer.status, 200);
   const html = await customer.text();
-  assert(html.includes("MWAPI base URL"));
-  assert(html.includes("claude-n-codex.com base URL"));
+  assert(html.includes("API v1 base URL"));
+  assert(html.includes("API v2 base URL"));
+  assert(
+    !/mwapi|claude-n-codex/i.test(html),
+    "Customer HTML exposes upstream identity",
+  );
   assert(!html.includes("private-upstream"));
   assert(!html.includes("Estimated profit"));
   assert(!html.includes(password));
@@ -283,18 +287,29 @@ try {
       page.on("pageerror", (e) => errors.push(e.message));
       await mkdir(".tmp/screenshots", { recursive: true });
       await page.goto("http://localhost:3100/");
-      await page
-        .getByRole("heading", { name: /Your next idea/ })
-        .waitFor();
-      await page
-        .getByRole("button", { name: "claude-n-codex.com", exact: true })
-        .click();
+      assert(
+        !/mwapi|claude-n-codex/i.test(await page.content()),
+        "Homepage exposes upstream identity",
+      );
+      for (const script of await page
+        .locator("script[src]")
+        .evaluateAll((nodes) =>
+          nodes.map((node) => (node as HTMLScriptElement).src),
+        )) {
+        const source = await (await context.request.get(script)).text();
+        assert(
+          !/mwapi|claude-n-codex/i.test(source),
+          "Homepage JavaScript exposes upstream identity",
+        );
+      }
+      await page.getByRole("heading", { name: /Your next idea/ }).waitFor();
+      await page.getByRole("button", { name: "API v2", exact: true }).click();
       assert(
         (await page.locator(".connection-console code").innerText()).includes(
           "/v2/models",
         ),
       );
-      await page.getByRole("button", { name: "MWAPI", exact: true }).click();
+      await page.getByRole("button", { name: "API v1", exact: true }).click();
       assert(
         (await page.locator(".connection-console code").innerText()).includes(
           "/v1/models",

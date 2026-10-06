@@ -22,7 +22,7 @@ export default function Home() {
       <section className="landing-hero" id="main-content">
         <div className="hero-copy">
           <span className="hero-tag">
-            <span /> Two providers. One workspace.
+            <span /> Your models. One workspace.
           </span>
           <h1>
             Your next idea.
@@ -49,7 +49,7 @@ export default function Home() {
         </div>
         <div
           className="connection-art"
-          aria-label="One Somiti key connects to MWAPI through v1 and claude-n-codex.com through v2"
+          aria-label="One Somiti key connects to API v1 and API v2"
         >
           <div className="orbit orbit-one" />
           <div className="orbit orbit-two" />
@@ -62,13 +62,13 @@ export default function Home() {
           <div className="provider-pair">
             <div className="provider-tile">
               <span className="route-chip">/v1</span>
-              <strong>MWAPI</strong>
+              <strong>API v1</strong>
               <span>Your enabled models</span>
             </div>
             <div className="provider-tile">
               <span className="route-chip">/v2</span>
-              <strong>claude-n-codex.com</strong>
-              <span>Claude &amp; ChatGPT accounts</span>
+              <strong>API v2</strong>
+              <span>Your enabled models</span>
             </div>
           </div>
           <div className="connection-caption">
@@ -113,8 +113,8 @@ export default function Home() {
             <br />A clear way in.
           </h2>
           <p>
-            Choose your provider’s route, then use an enabled model ID from your
-            private dashboard. Both routes use the same Somiti key.
+            Choose your model’s API route, then use an enabled model ID from
+            your private dashboard. Both routes use the same Somiti key.
           </p>
           <p className="muted">
             Model availability and supported endpoints depend on your assigned
@@ -137,16 +137,16 @@ export default function Home() {
         <details>
           <summary>Which base URL should I use?</summary>
           <p>
-            Use your Somiti API domain with /v1 for MWAPI, or /v2 for
-            claude-n-codex.com. Your private dashboard shows the complete URLs.
-            A model only works on its assigned provider’s route.
+            Your private dashboard shows the complete API v1 and API v2 URLs.
+            Use the route listed beside your model. A model only works on its
+            assigned API route.
           </p>
         </details>
         <details>
           <summary>Do the two routes have separate balances?</summary>
           <p>
             No. Both routes use your Somiti key’s shared credit balance and
-            access permissions. Your dashboard brings usage from both providers
+            access permissions. Your dashboard brings usage from both routes
             together.
           </p>
         </details>
