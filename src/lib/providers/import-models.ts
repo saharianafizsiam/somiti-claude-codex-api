@@ -16,12 +16,12 @@ export function importedModel(
     publicModelId: `${route}/${safe.slice(0, 130)}${suffix}`,
     upstreamModelId: row.id,
     displayName: row.name,
-    enabled: false,
+    enabled: true,
     visible: true,
-    supportsOpenaiEndpoint: false,
-    supportsAnthropicEndpoint: false,
-    supportsStreaming: false,
+    supportsOpenaiEndpoint: family === "OPENAI",
+    supportsAnthropicEndpoint: family === "CLAUDE",
+    supportsStreaming: true,
     description:
-      "Imported from API catalog. Review endpoint support and limits, then enable.",
+      "Imported from API catalog. Uses the account family's standard endpoint; generation availability depends on the assigned key.",
   };
 }

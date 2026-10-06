@@ -7,8 +7,15 @@ describe("catalog imports", () => {
     const b = importedModel("claude-n-codex", "CLAUDE", row);
     expect(a.publicModelId).not.toBe(b.publicModelId);
     expect(a.upstreamModelId).toBe(row.id);
-    expect(a.enabled).toBe(false);
+    expect(a.enabled).toBe(true);
     expect(a.supportsOpenaiEndpoint).toBe(false);
+    expect(a.supportsAnthropicEndpoint).toBe(true);
+    const gpt = importedModel("claude-n-codex", "OPENAI", {
+      id: "gpt-test",
+      name: "GPT",
+    });
+    expect(gpt.supportsOpenaiEndpoint).toBe(true);
+    expect(gpt.supportsAnthropicEndpoint).toBe(false);
   });
   it("does not collapse IDs when sanitizing or truncating", () => {
     const make = (id: string) =>

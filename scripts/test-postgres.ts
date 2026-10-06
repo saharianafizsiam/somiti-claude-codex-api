@@ -199,7 +199,13 @@ try {
       },
     );
     assert.equal(imported.status, 200);
-    assert.equal((await imported.json()).added, expected);
+    const result = await imported.json();
+    assert.equal(result.added, expected);
+    assert.equal(result.activated, expected === 9 ? 0 : 1);
+    const [catalogModel] = await database.select().from(schema.models).where(eq(schema.models.publicModelId,"v1/claude-opus-5"));
+    assert.equal(catalogModel.enabled,true);
+    assert.equal(catalogModel.supportsAnthropicEndpoint,true);
+    if (expected === 9) await database.update(schema.models).set({enabled:false,supportsAnthropicEndpoint:false,description:"Imported from API catalog. Review endpoint support and limits, then enable."}).where(eq(schema.models.id,catalogModel.id));
   }
   for (const path of [
     "/dashboard",
@@ -223,7 +229,9 @@ try {
     headers: { authorization: `Bearer ${credential}` },
   });
   assert.equal(list.status, 200);
-  assert.equal((await list.json()).data[0].id, "test-model");
+  assert.ok(
+    (await list.json()).data.some((m: { id: string }) => m.id === "test-model"),
+  );
   const secondList = await fetch("http://localhost:3100/v2/models", {
     headers: { authorization: `Bearer ${credential}` },
   });

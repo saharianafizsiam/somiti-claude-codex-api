@@ -93,9 +93,10 @@ export async function adminAction(action: string, input: unknown) {
           )?.models || [];
     return db().transaction(async (tx) => {
       let added = 0;
+      let activated = 0;
       for (const row of rows) {
         const existing = await tx
-          .select({ id: models.id })
+          .select()
           .from(models)
           .where(
             and(
@@ -104,7 +105,31 @@ export async function adminAction(action: string, input: unknown) {
             ),
           )
           .limit(1);
-        if (existing.length) continue;
+        if (existing.length) {
+          const draft = existing[0];
+          if (
+            !draft.archivedAt &&
+            !draft.enabled &&
+            draft.description ===
+              "Imported from API catalog. Review endpoint support and limits, then enable."
+          ) {
+            const defaults = importedModel(data.provider, data.family, row);
+            await tx
+              .update(models)
+              .set({
+                enabled: true,
+                visible: true,
+                supportsOpenaiEndpoint: defaults.supportsOpenaiEndpoint,
+                supportsAnthropicEndpoint: defaults.supportsAnthropicEndpoint,
+                supportsStreaming: true,
+                description: defaults.description,
+                updatedAt: new Date(),
+              })
+              .where(eq(models.id, draft.id));
+            activated++;
+          }
+          continue;
+        }
         const inserted = await tx
           .insert(models)
           .values(importedModel(data.provider, data.family, row))
@@ -113,7 +138,7 @@ export async function adminAction(action: string, input: unknown) {
         added += inserted.length;
       }
       await audit(tx, user.id, "IMPORT_MODELS", "provider", data.provider);
-      return { added };
+      return { added, activated };
     });
   }
   if (action === "key.create") {

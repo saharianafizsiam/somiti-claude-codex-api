@@ -32,8 +32,9 @@ export function ProviderDiscovery({ provider }: { provider: string }) {
     <section className="panel">
       <h2>Upstream model catalog</h2>
       <p className="muted">
-        Read-only discovery. Adding a model opens a draft; review prices and
-        capabilities before saving.
+        Import and enable models for this account for matching keys. Previously
+        imported drafts are enabled too. Custom edits and archived models are
+        preserved.
       </p>
       {provider === "claude-n-codex" && (
         <label>
@@ -89,7 +90,7 @@ export function ProviderDiscovery({ provider }: { provider: string }) {
                   source,
                 });
                 setMessage(
-                  `${result.added} new model drafts imported. Existing models were preserved. Review endpoint support and enable the models you want.`,
+                  `${result.added} models added and enabled; ${result.activated} previous drafts enabled. Matching keys can now use them. For custom-access keys, select the models in the key settings.`,
                 );
                 router.refresh();
               } catch (e) {
@@ -100,8 +101,8 @@ export function ProviderDiscovery({ provider }: { provider: string }) {
             }}
           >
             {source === "saved"
-              ? "Import saved catalog (Oct 7)"
-              : "Refresh & import from API"}
+              ? "Import & enable saved models"
+              : "Refresh & enable from API"}
           </Button>
         ))}
       </div>
@@ -122,3 +123,4 @@ export function ProviderDiscovery({ provider }: { provider: string }) {
     </section>
   );
 }
+
