@@ -2290,3 +2290,87 @@ body,
   left: auto;
   transform: none;
 }
+.metric-mini {
+  height: 42px;
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.metric-success {
+  gap: 2px;
+}
+.metric-success > .usage-hover {
+  flex: 1;
+  min-width: 0;
+}
+.metric-success .usage-hover-trigger {
+  width: 100%;
+  padding: 0 !important;
+  display: block;
+}
+.success-tick {
+  height: 15px;
+  display: block;
+  border-radius: 2px;
+}
+.metric-cache > .usage-hover,
+.metric-sparkline > .usage-hover {
+  width: 100%;
+}
+.metric-cache .usage-hover-trigger,
+.metric-sparkline .usage-hover-trigger {
+  width: 100%;
+  padding: 0 !important;
+  display: block;
+}
+.metric-sparkline svg {
+  width: 100%;
+  height: 38px;
+  display: block;
+}
+.cache-track {
+  height: 5px;
+  display: block;
+  background: #202935;
+  border-radius: 5px;
+}
+.cache-track > span {
+  display: block;
+  height: 100%;
+  background: #13c99a;
+  border-radius: 5px;
+  position: relative;
+}
+.cache-track > span::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: -1px;
+  width: 7px;
+  height: 7px;
+  background: #13c99a;
+  border-radius: 50%;
+}
+.mini-detail {
+  display: block;
+  margin-top: 4px;
+}
+.mini-empty {
+  color: #9ca9be;
+  font-size: 11px;
+}
+.metric-mini .usage-tooltip {
+  width: 250px;
+}
+.metric-success .usage-tooltip {
+  left: 0;
+  transform: none;
+}
+.metric-success > .usage-hover:nth-child(n + 16) .usage-tooltip {
+  right: 0;
+  left: auto;
+}
+.console-metrics .console-panel:nth-child(3) > strong {
+  color: #13c99a;
+}

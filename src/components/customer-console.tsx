@@ -11,6 +11,7 @@ import {
 import { CopyValue, SecretReveal } from "./actions";
 import { AutoRefresh } from "./refresh";
 import { ModelCosts } from "./model-costs";
+import { MetricChart } from "./metric-chart";
 import { UsageTooltip } from "./usage-tooltip";
 import { ClientConnectionGuides } from "./client-connection-guides";
 export type CustomerLog = {
@@ -487,6 +488,11 @@ export function CustomerConsole(p: Props) {
                     </div>
                     <strong>{value}</strong>
                     <small>{note}</small>
+                    <MetricChart
+                      label={label}
+                      stats={accountStats}
+                      logs={initialLogs}
+                    />
                   </section>
                 ))}
               </div>
@@ -589,66 +595,75 @@ export function CustomerConsole(p: Props) {
                   shareToken={p.shareToken}
                 />
               ) : (
-                <div className="console-connect-grid">
-                  <aside className="console-panel">
-                    <h2>Clients</h2>
-                    {["cURL", "JavaScript", "PowerShell"].map((c) => (
-                      <button
-                        aria-pressed={client === c}
-                        key={c}
-                        onClick={() => setClient(c)}
-                      >
-                        {c}
-                      </button>
-                    ))}
-                  </aside>
-                  <section className="console-panel">
-                    <h2>Your first request</h2>
-                    <ol className="connection-steps">
-                      <li>
-                        Select an enabled model below. The example uses its
-                        supported endpoint.
-                      </li>
-                      <li>
-                        Reveal your Somiti key above and replace YOUR_API_KEY in
-                        the example.
-                      </li>
-                      <li>
-                        Run the example, then open History to confirm the
-                        result.
-                      </li>
-                    </ol>
-                    <label>
-                      Model
-                      <select
-                        value={model?.id || ""}
-                        onChange={(e) => setSelected(e.target.value)}
-                      >
-                        <option value="" disabled>
-                          Select a model
-                        </option>
-                        {p.models.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name} · {m.id}
+                <>
+                  <ClientConnectionGuides
+                    baseUrl={p.baseUrl}
+                    models={p.models}
+                    shareToken={p.shareToken}
+                  />
+                  <div className="console-connect-grid">
+                    <aside className="console-panel">
+                      <h2>Clients</h2>
+                      {["cURL", "JavaScript", "PowerShell"].map((c) => (
+                        <button
+                          aria-pressed={client === c}
+                          key={c}
+                          onClick={() => setClient(c)}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </aside>
+                    <section className="console-panel">
+                      <h2>Your first request</h2>
+                      <ol className="connection-steps">
+                        <li>
+                          Select an enabled model below. The example uses its
+                          supported endpoint.
+                        </li>
+                        <li>
+                          Reveal your Somiti key above and replace YOUR_API_KEY
+                          in the example.
+                        </li>
+                        <li>
+                          Run the example, then open History to confirm the
+                          result.
+                        </li>
+                      </ol>
+                      <label>
+                        Model
+                        <select
+                          value={model?.id || ""}
+                          onChange={(e) => setSelected(e.target.value)}
+                        >
+                          <option value="" disabled>
+                            Select a model
                           </option>
-                        ))}
-                      </select>
-                    </label>
-                    <p>
-                      Replace YOUR_API_KEY with your key above.{" "}
-                      {client === "cURL"
-                        ? "Run in macOS / Linux terminal."
-                        : client === "JavaScript"
-                          ? "Run on your server; keep your key out of public browser code."
-                          : "Run in Windows PowerShell."}
-                    </p>
-                    {model ? (
-                      <CopyValue value={code} />
-                    ) : (
-                      <p>Connection examples appear when a model is enabled.</p>
-                    )}
-                  </section>
-                </div>
+                          {p.models.map((m) => (
+                            <option key={m.id} value={m.id}>
+                              {m.name} · {m.id}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <p>
+                        Replace YOUR_API_KEY with your key above.{" "}
+                        {client === "cURL"
+                          ? "Run in macOS / Linux terminal."
+                          : client === "JavaScript"
+                            ? "Run on your server; keep your key out of public browser code."
+                            : "Run in Windows PowerShell."}
+                      </p>
+                      {model ? (
+                        <CopyValue value={code} />
+                      ) : (
+                        <p>
+                          Connection examples appear when a model is enabled.
+                        </p>
+                      )}
+                    </section>
+                  </div>
+                </>
               )}
             </>
           )}

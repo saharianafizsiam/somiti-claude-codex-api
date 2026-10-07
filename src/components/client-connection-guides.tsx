@@ -16,6 +16,12 @@ export function ClientConnectionGuides({
   models: GuideModel[];
   shareToken: string;
 }) {
+  const isV1 = baseUrl.endsWith("/v1");
+  const guides = isV1
+    ? clientGuides.filter((g) =>
+        ["claude-code", "codex", "opencode"].includes(g.id),
+      )
+    : clientGuides;
   const [clientId, setClientId] = useState("claude-code");
   const [search, setSearch] = useState("");
   const [modelId, setModelId] = useState("");
@@ -35,7 +41,7 @@ export function ClientConnectionGuides({
         os,
       )
     : null;
-  const matches = clientGuides.filter((c) =>
+  const matches = guides.filter((c) =>
     `${c.name} ${c.group}`.toLowerCase().includes(search.toLowerCase()),
   );
   return (
@@ -52,7 +58,9 @@ export function ClientConnectionGuides({
           <div>
             <h3>OpenAI-compatible provider</h3>
             <CopyValue value={baseUrl} />
-            <small>Keep /v2. The client adds /chat/completions.</small>
+            <small>
+              Keep {isV1 ? "/v1" : "/v2"}. The client adds /chat/completions.
+            </small>
           </div>
           <div>
             <h3>Full chat endpoint</h3>
@@ -65,7 +73,7 @@ export function ClientConnectionGuides({
         <aside className="console-panel">
           <div className="console-section-head">
             <h2>Clients</h2>
-            <span>{clientGuides.length}</span>
+            <span>{guides.length}</span>
           </div>
           <input
             aria-label="Search clients"
@@ -235,14 +243,14 @@ export function ClientConnectionGuides({
                   new chat.
                 </li>
                 <li>
-                  &ldquo;Out of usage&rdquo; or &ldquo;model already available&rdquo;? You may have
-                  selected a built-in model. Use the neutral custom model ID
-                  from the fields above.
+                  &ldquo;Out of usage&rdquo; or &ldquo;model already
+                  available&rdquo;? You may have selected a built-in model. Use
+                  the neutral custom model ID from the fields above.
                 </li>
                 <li>
-                  Auto, Tab completion, and some Agent features may use Cursor&apos;s
-                  services and limits. Requests and your key pass through
-                  Cursor&apos;s servers.
+                  Auto, Tab completion, and some Agent features may use
+                  Cursor&apos;s services and limits. Requests and your key pass
+                  through Cursor&apos;s servers.
                 </li>
                 <li>
                   The override affects other OpenAI models too. Disable it when
@@ -250,8 +258,8 @@ export function ClientConnectionGuides({
                 </li>
                 <li>
                   No Save or Verify button? Test with a new chat. If chat works
-                  but Agent does not, check model tool support and the client&apos;s
-                  custom-provider limitations.
+                  but Agent does not, check model tool support and the
+                  client&apos;s custom-provider limitations.
                 </li>
               </ul>
             </aside>

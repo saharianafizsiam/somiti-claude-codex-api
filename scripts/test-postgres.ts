@@ -509,6 +509,7 @@ try {
       );
       await page.goto(dashboardUrl);
       await page.getByRole("heading", { name: "API configuration" }).waitFor();
+      assert.equal(await page.locator(".metric-mini").count(), 4);
       const successDetails = page.getByRole("button", {
         name: "Success rate details",
         exact: true,
@@ -570,6 +571,12 @@ try {
           () => document.documentElement.scrollWidth <= window.innerWidth,
         ),
       );
+      await page.getByRole("navigation",{name:"Dashboard sections"}).getByRole("button",{name:"Connect",exact:true}).click();
+      const v1Clients=page.getByRole("navigation",{name:"Connection clients"});
+      assert.equal(await v1Clients.getByRole("button").count(),3);
+      await v1Clients.getByRole("button",{name:"Codex CLI",exact:true}).click();
+      await page.getByText("Not supported yet: this client requires /responses.").waitFor();
+      await page.getByRole("navigation",{name:"Dashboard sections"}).getByRole("button",{name:"Overview",exact:true}).click();
       await database
         .update(schema.apiKeys)
         .set({ upstreamProvider: "claude-n-codex" })
@@ -676,7 +683,7 @@ try {
         path: ".tmp/screenshots/clients-desktop.png",
         fullPage: true,
       });
-      for (const path of ["/v2/v1/messages", "/v2/v1/models"]) {
+      for (const path of ["/v2/v1/messages", "/v2/v1/models", "/v1/v1/messages", "/v1/v1/models"]) {
         const r = await fetch(
           `http://localhost:3100${path}`,
           path.endsWith("messages")

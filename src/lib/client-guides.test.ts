@@ -96,3 +96,35 @@ it("Cursor prefers a neutral allowed alias and uses the Somiti route", () => {
     value: alias.id,
   });
 });
+
+it("v1 setup keeps customer credentials and models on the assigned route", () => {
+  const model = {
+    id: "v1/claude-test",
+    name: "Claude",
+    openai: false,
+    anthropic: true,
+  };
+  const claude = connectionGuide(
+    clientGuides.find((g) => g.id === "claude-code")!,
+    model,
+    "https://api.somiti.page/v1",
+    "YOUR_SOMITI_API_KEY",
+    "windows",
+  );
+  expect(JSON.parse(claude.snippets[0].code).env.ANTHROPIC_BASE_URL).toBe(
+    "https://api.somiti.page/v1",
+  );
+  const open = connectionGuide(
+    clientGuides.find((g) => g.id === "opencode")!,
+    model,
+    "https://api.somiti.page/v1",
+    "YOUR_SOMITI_API_KEY",
+    "unix",
+  );
+  const config = JSON.parse(open.snippets[0].code);
+  expect(config.provider.somiti.options.baseURL).toBe(
+    "https://api.somiti.page/v1",
+  );
+  expect(config.provider.somiti.npm).toBe("@ai-sdk/anthropic");
+  expect(config.model).toBe("somiti/v1/claude-test");
+});
