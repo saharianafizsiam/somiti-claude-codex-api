@@ -1,3 +1,4 @@
+import { customerCatalog } from "@/lib/models/customer-id";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { availableModels, sharedKey } from "@/lib/api-keys";
@@ -13,10 +14,11 @@ export default async function Customer({ params }: { params: Promise<{ shareToke
   const { shareToken } = await params;
   const key = await sharedKey(shareToken);
   if (!key) notFound();
-  const [quota, catalog, { stats }, logs, [config]] = await Promise.all([
+  const [quota, storedCatalog, { stats }, logs, [config]] = await Promise.all([
     keyQuota(key), availableModels(key), usage(eq(apiRequests.apiKeyId, key.id), "30d"),
     requestLogs(eq(apiRequests.apiKeyId, key.id)), db().select().from(settings).limit(1),
   ]);
+  const catalog = customerCatalog(storedCatalog);
   const [account, pricing] = await Promise.all([keyAccount(key,catalog), publishedPricing(key.upstreamProvider,catalog)]);
   const apiUrl = (config?.publicApiUrl || process.env.API_URL || "https://api.somiti.page").replace(/\/$/, "");
   return <CustomerConsole name={key.name} shareToken={shareToken} prefix={key.keyPrefix}

@@ -21,6 +21,7 @@ const f = vi.hoisted(() => ({
   send: vi.fn(),
   settle: vi.fn(),
   allowed: true,
+  lookupFound: true,
   done: [] as Promise<void>[],
 }));
 vi.mock("@/lib/api-keys", () => ({
@@ -37,7 +38,7 @@ vi.mock("@/lib/db", () => ({
     select: () => ({
       from: () => ({
         leftJoin: () => ({
-          where: () => ({ limit: async () => [{ model: f.model }] }),
+          where: () => ({ limit: async () => f.lookupFound ? [{ model: f.model }] : [] }),
         }),
       }),
     }),
@@ -62,6 +63,7 @@ beforeEach(() => {
   f.send.mockReset();
   f.settle.mockReset();
   f.allowed = true;
+  f.lookupFound = true;
   f.done = [];
   f.model.supportsTools = true;
 });
@@ -91,7 +93,7 @@ it("forwards Responses input, tools and output limit with stateless storage", as
     "claude-n-codex",
   );
   expect(r.status).toBe(200);
-  expect((await r.json()).model).toBe("v2/gpt-test");
+  expect((await r.json()).model).toBe("gpt-test");
   expect(f.send.mock.calls[0][1]).toMatchObject({
     model: "gpt-test",
     input: "Hi",
@@ -163,7 +165,7 @@ it("streams tool events and settles nested final usage", async () => {
   const text = await r.text();
   await Promise.all(f.done);
   expect(text).toContain("function_call");
-  expect(text).toContain("v2/gpt-test");
+  expect(text).toContain("gpt-test");
   expect(f.settle.mock.calls[0][1]).toMatchObject({
     inputTokens: 10,
     outputTokens: 2,
@@ -187,4 +189,18 @@ it("distinguishes exhausted quota from a temporary rate limit without leaking pr
   expect(body.error.code).toBe("quota_exhausted");
   expect(JSON.stringify(body)).not.toContain("private account detail");
   expect(r.headers.get("retry-after")).toBeNull();
+});
+
+it("accepts a native v2 ID without a database alias and forwards it unchanged", async () => {
+ f.lookupFound = false;
+ f.send.mockResolvedValue(Response.json({ model: "gpt-test", output: [], usage: { input_tokens: 1, output_tokens: 1 } }));
+ const r = await gateway(request({model:"gpt-test", input:"Hi"}), "responses", "claude-n-codex");
+ expect(r.status).toBe(200);
+ expect((await r.json()).model).toBe("gpt-test");
+ expect(f.send).toHaveBeenCalled();
+});
+it("rejects native IDs absent from the key's allowed catalog", async () => {
+ f.lookupFound = false; f.allowed = false;
+ const r = await gateway(request({model:"gpt-test", input:"Hi"}), "responses", "claude-n-codex");
+ expect(r.status).toBe(404); expect(f.send).not.toHaveBeenCalled();
 });

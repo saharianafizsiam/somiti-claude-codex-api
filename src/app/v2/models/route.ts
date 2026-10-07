@@ -1,3 +1,4 @@
+import { customerModelId } from "@/lib/models/customer-id";
 import { authenticate, availableModels } from "@/lib/api-keys";
 import { errorResponse } from "@/lib/errors";
 export async function GET(req: Request) {
@@ -9,7 +10,7 @@ export async function GET(req: Request) {
         data: (await availableModels(key))
           .filter((m) => m.provider === "claude-n-codex")
           .map((m) => ({
-            id: m.publicModelId,
+            id: customerModelId(m),
             object: "model",
             owned_by: "somiti",
           })),

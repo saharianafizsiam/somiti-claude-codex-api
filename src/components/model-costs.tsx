@@ -28,7 +28,7 @@ export function ModelCosts({
       const aliases = models.filter((m) => m.name === name);
       const model =
         aliases.find(
-          (m) => m.id.startsWith("v2/claude-") && account.prices[m.id],
+          (m) => /^(v2\/)?claude-/.test(m.id) && account.prices[m.id],
         ) ||
         aliases.find((m) => account.prices[m.id]) ||
         aliases[0];

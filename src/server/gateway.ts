@@ -1,3 +1,4 @@
+import { customerModelId } from "@/lib/models/customer-id";
 import { resolveClientAlias } from "@/lib/models/client-alias";
 import { readJson } from "@/lib/security/request-body";
 import { eq, or } from "drizzle-orm";
@@ -77,6 +78,7 @@ export async function gateway(
       .limit(1);
     const allowedModels = await availableModels(key);
     const model =
+      allowedModels.find(m => m.provider === selectedProvider && customerModelId(m) === body.model) ??
       row?.model ??
       resolveClientAlias(body.model, selectedProvider, allowedModels);
     if (!model)
@@ -309,7 +311,7 @@ export async function gateway(
           Date.now() - started,
         );
         if (value && typeof value === "object" && value.model)
-          value.model = model.publicModelId;
+          value.model = customerModelId(model);
         return Response.json(value, { headers: responseHeaders });
       } catch {
         await settle(
@@ -337,7 +339,7 @@ export async function gateway(
     }
     const reader = response.body.getReader();
     const collector = new UsageCollector();
-    const publicStream = new PublicStream(model.publicModelId);
+    const publicStream = new PublicStream(customerModelId(model));
     let disconnected = false;
     let wakeReader: (() => void) | undefined;
     const wake = () => {

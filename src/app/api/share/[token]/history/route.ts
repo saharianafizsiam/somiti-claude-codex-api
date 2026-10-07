@@ -1,3 +1,4 @@
+import { customerCatalog } from "@/lib/models/customer-id";
 import { accountHistory } from "@/lib/providers/account";
 import { availableModels, sharedKey } from "@/lib/api-keys";
 import { apiRequests } from "@/lib/db/schema";
@@ -9,7 +10,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ token: string }
   const search = new URL(req.url).searchParams;
   const page = Math.max(1, Math.min(100000, Number.parseInt(search.get("page") || "1") || 1));
   if(key.upstreamProvider === "claude-n-codex") {
-    const history = await accountHistory(key,await availableModels(key),page);
+    const history = await accountHistory(key,customerCatalog(await availableModels(key)),page);
     return Response.json(history ?? {error:"Account history is temporarily unavailable."},{status:history?200:503,headers:{"Cache-Control":"private, no-store"}});
   }
   const model = (search.get("model") || "").slice(0,150);
