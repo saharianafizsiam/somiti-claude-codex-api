@@ -1,4 +1,5 @@
 "use client";
+import type { AccountInfo } from "@/lib/providers/account";
 import { useState } from "react";
 import {
   LayoutGrid,
@@ -9,7 +10,13 @@ import {
 } from "lucide-react";
 import { CopyValue, SecretReveal } from "./actions";
 import { AutoRefresh } from "./refresh";
+import { ModelCosts } from "./model-costs";
+import { ClientConnectionGuides } from "./client-connection-guides";
 export type CustomerLog = {
+  cacheRead?: number | null;
+  cacheWrite?: number | null;
+  charged?: string | null;
+  ttft?: number | null;
   id: string;
   model: string | null;
   input: number | null;
@@ -24,8 +31,13 @@ type Model = {
   family: string;
   openai: boolean;
   anthropic: boolean;
+  tools?: boolean;
+  streaming?: boolean;
+  contextWindow?: number;
+  maxOutputTokens?: number;
 };
 type Props = {
+  account?: AccountInfo | null;
   name: string;
   shareToken: string;
   prefix: string;
@@ -61,6 +73,8 @@ const sections = [
   { name: "History", icon: History },
 ];
 export function CustomerConsole(p: Props) {
+  const initialLogs = p.account ? (p.account.history?.logs ?? []) : p.logs;
+  const accountStats = p.account?.stats;
   const [view, setView] = useState("Overview");
   const [filter, setFilter] = useState("");
   const [search, setSearch] = useState("");
@@ -142,6 +156,7 @@ export function CustomerConsole(p: Props) {
                 "Model",
                 "Status",
                 "Input / Output",
+                ...(p.account ? ["Cache read / write", "Charged", "TTFT"] : []),
                 "Latency",
               ].map((h) => (
                 <th key={h}>{h}</th>
@@ -161,7 +176,7 @@ export function CustomerConsole(p: Props) {
                 <td>
                   <span
                     className={
-                      l.status === "FAILED"
+                      l.status === "FAILED" || Number(l.status) >= 400
                         ? "console-danger"
                         : "console-success"
                     }
@@ -173,6 +188,22 @@ export function CustomerConsole(p: Props) {
                   {l.input?.toLocaleString() ?? "—"} /{" "}
                   {l.output?.toLocaleString() ?? "—"}
                 </td>
+                {p.account && (
+                  <>
+                    <td>
+                      {l.cacheRead?.toLocaleString() ?? "—"} /{" "}
+                      {l.cacheWrite?.toLocaleString() ?? "—"}
+                    </td>
+                    <td>
+                      {l.charged == null
+                        ? "—"
+                        : `${Number(l.charged).toFixed(4)}`}
+                    </td>
+                    <td>
+                      {l.ttft == null ? "—" : `${(l.ttft / 1000).toFixed(2)}s`}
+                    </td>
+                  </>
+                )}
                 <td>
                   {l.latency === null
                     ? "—"
@@ -184,13 +215,23 @@ export function CustomerConsole(p: Props) {
         </table>
         {!rows.length && (
           <p className="console-empty">
-            No requests yet. Your requests will appear here after you connect.
+            {p.account && !p.account.history && history === null
+              ? "Account history is temporarily unavailable. Try again shortly."
+              : "No requests in this view."}
           </p>
         )}
       </div>
     );
   }
-  const catalog = (
+  const displayModels = p.models.filter((m) => {
+    const same = p.models.filter((other) => other.name === m.name);
+    const canonical =
+      same.find((other) => other.id.startsWith("v2/claude-")) || same[0];
+    return canonical.id === m.id;
+  });
+  const catalog = p.account ? (
+    <ModelCosts models={p.models} account={p.account} />
+  ) : (
     <section className="console-panel">
       <div className="console-section-head">
         <div>
@@ -205,7 +246,7 @@ export function CustomerConsole(p: Props) {
         />
       </div>
       <div className="console-models">
-        {p.models
+        {displayModels
           .filter((m) =>
             `${m.id} ${m.name}`.toLowerCase().includes(search.toLowerCase()),
           )
@@ -214,6 +255,33 @@ export function CustomerConsole(p: Props) {
               <strong>{m.name}</strong>
               <CopyValue value={m.id} />
               <small>{m.family}</small>
+              {p.models.some(
+                (other) => other.name === m.name && other.id !== m.id,
+              ) && (
+                <details>
+                  <summary>Other accepted IDs</summary>
+                  {p.models
+                    .filter(
+                      (other) => other.name === m.name && other.id !== m.id,
+                    )
+                    .map((other) => (
+                      <CopyValue key={other.id} value={other.id} />
+                    ))}
+                </details>
+              )}
+              {p.account?.prices[m.id] && (
+                <details>
+                  <summary>
+                    {money(p.account.prices[m.id].input)} / M input tokens
+                  </summary>
+                  <small>
+                    Per million tokens: output{" "}
+                    {money(p.account.prices[m.id].output)}, cache read{" "}
+                    {money(p.account.prices[m.id].cacheRead)}, cache write{" "}
+                    {money(p.account.prices[m.id].cacheWrite)}.
+                  </small>
+                </details>
+              )}
             </div>
           ))}
       </div>
@@ -337,27 +405,49 @@ export function CustomerConsole(p: Props) {
                 {[
                   {
                     label: "Success rate",
-                    value: p.stats.requests
-                      ? `${(((p.stats.requests - p.stats.errors) / p.stats.requests) * 100).toFixed(1)}%`
-                      : "—",
+                    value: p.account
+                      ? accountStats?.success == null
+                        ? "—"
+                        : `${accountStats.success.toFixed(1)}%`
+                      : p.stats.requests
+                        ? `${(((p.stats.requests - p.stats.errors) / p.stats.requests) * 100).toFixed(1)}%`
+                        : "—",
                     note: "Recorded requests over 30 days",
                   },
                   {
                     label: "Response speed",
-                    value: p.stats.requests
-                      ? `${(p.stats.latency / 1000).toFixed(2)}s`
-                      : "—",
-                    note: "Average request duration",
+                    value: p.account
+                      ? accountStats?.latency == null
+                        ? "—"
+                        : `${(accountStats.latency / 1000).toFixed(2)}s`
+                      : p.stats.requests
+                        ? `${(p.stats.latency / 1000).toFixed(2)}s`
+                        : "—",
+                    note: p.account
+                      ? accountStats?.p95 == null
+                        ? "Median account request duration"
+                        : `95% within ${(accountStats.p95 / 1000).toFixed(1)}s`
+                      : "Average request duration",
                   },
                   {
-                    label: "Tokens",
-                    value: p.stats.tokens.toLocaleString(),
-                    note: "Recorded tokens over 30 days",
+                    label: p.account ? "Cache hit" : "Tokens",
+                    value: p.account
+                      ? accountStats?.cacheHit == null
+                        ? "—"
+                        : `${accountStats.cacheHit.toFixed(1)}%`
+                      : p.stats.tokens.toLocaleString(),
+                    note: p.account
+                      ? "Account cache reads over 30 days"
+                      : "Recorded tokens over 30 days",
                   },
                   {
                     label: "Today",
-                    value: p.stats.today.toLocaleString(),
-                    note: "Requests since 00:00 UTC",
+                    value: p.account
+                      ? (accountStats?.today.toLocaleString() ?? "—")
+                      : p.stats.today.toLocaleString(),
+                    note: accountStats
+                      ? `${money(accountStats.todaySpend)} charged since 00:00 UTC`
+                      : "Requests since 00:00 UTC",
                   },
                 ].map(({ label, value, note }) => (
                   <section className="console-panel" key={label}>
@@ -367,18 +457,68 @@ export function CustomerConsole(p: Props) {
                   </section>
                 ))}
               </div>
+              {p.account && !accountStats && (
+                <p role="status">
+                  Account statistics are temporarily unavailable.
+                </p>
+              )}
+              {accountStats && (
+                <section className="console-panel">
+                  <h2>Daily spending</h2>
+                  <p>Last 14 days · UTC</p>
+                  <div className="account-spend-chart">
+                    {Array.from({ length: 14 }, (_, i) => {
+                      const date = new Date();
+                      date.setUTCDate(date.getUTCDate() - 13 + i);
+                      const day = date.toISOString().slice(0, 10);
+                      const spend =
+                        accountStats.days.find((d) => d.date === day)?.spend ||
+                        "0";
+                      const max = Math.max(
+                        1,
+                        ...accountStats.days
+                          .filter(
+                            (d) =>
+                              d.date >=
+                              new Date(Date.now() - 14 * 86400000)
+                                .toISOString()
+                                .slice(0, 10),
+                          )
+                          .map((d) => Number(d.spend)),
+                      );
+                      return (
+                        <div key={day} title={`${day}: ${money(spend)}`}>
+                          <span
+                            style={{
+                              height: `${Math.max(1, (Number(spend) / max) * 130)}px`,
+                            }}
+                          />
+                          <small>{day.slice(5)}</small>
+                          <small>{money(spend)}</small>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
               {catalog}
               <section className="console-panel console-history">
                 <div className="console-section-head">
                   <div>
                     <h2>Recent requests</h2>
-                    <p>Usage recorded through Somiti</p>
+                    <p>
+                      {p.account
+                        ? p.account.history
+                          ? `${p.account.history.total.toLocaleString()} account requests total`
+                          : "Account history unavailable"
+                        : "Usage recorded through Somiti"}
+                    </p>
                   </div>
                   <button onClick={() => setView("History")}>
                     Full history
                   </button>
                 </div>
-                {table(p.logs.slice(0, 6))}
+                {table(initialLogs.slice(0, 6))}
               </section>
             </>
           )}
@@ -390,52 +530,60 @@ export function CustomerConsole(p: Props) {
                 <CopyValue value={p.baseUrl} />
                 <SecretReveal prefix={p.prefix} shareToken={p.shareToken} />
               </section>
-              <div className="console-connect-grid">
-                <aside className="console-panel">
-                  <h2>Clients</h2>
-                  {["cURL", "JavaScript", "PowerShell"].map((c) => (
-                    <button
-                      aria-pressed={client === c}
-                      key={c}
-                      onClick={() => setClient(c)}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </aside>
-                <section className="console-panel">
-                  <h2>Your first request</h2>
-                  <label>
-                    Model
-                    <select
-                      value={model?.id || ""}
-                      onChange={(e) => setSelected(e.target.value)}
-                    >
-                      <option value="" disabled>
-                        Select a model
-                      </option>
-                      {p.models.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} · {m.id}
+              {p.baseUrl.endsWith("/v2") ? (
+                <ClientConnectionGuides
+                  baseUrl={p.baseUrl}
+                  models={p.models}
+                  shareToken={p.shareToken}
+                />
+              ) : (
+                <div className="console-connect-grid">
+                  <aside className="console-panel">
+                    <h2>Clients</h2>
+                    {["cURL", "JavaScript", "PowerShell"].map((c) => (
+                      <button
+                        aria-pressed={client === c}
+                        key={c}
+                        onClick={() => setClient(c)}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </aside>
+                  <section className="console-panel">
+                    <h2>Your first request</h2>
+                    <label>
+                      Model
+                      <select
+                        value={model?.id || ""}
+                        onChange={(e) => setSelected(e.target.value)}
+                      >
+                        <option value="" disabled>
+                          Select a model
                         </option>
-                      ))}
-                    </select>
-                  </label>
-                  <p>
-                    Replace YOUR_API_KEY with your key above.{" "}
-                    {client === "cURL"
-                      ? "Run in macOS / Linux terminal."
-                      : client === "JavaScript"
-                        ? "Run on your server; keep your key out of public browser code."
-                        : "Run in Windows PowerShell."}
-                  </p>
-                  {model ? (
-                    <CopyValue value={code} />
-                  ) : (
-                    <p>Connection examples appear when a model is enabled.</p>
-                  )}
-                </section>
-              </div>
+                        {p.models.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.name} · {m.id}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <p>
+                      Replace YOUR_API_KEY with your key above.{" "}
+                      {client === "cURL"
+                        ? "Run in macOS / Linux terminal."
+                        : client === "JavaScript"
+                          ? "Run on your server; keep your key out of public browser code."
+                          : "Run in Windows PowerShell."}
+                    </p>
+                    {model ? (
+                      <CopyValue value={code} />
+                    ) : (
+                      <p>Connection examples appear when a model is enabled.</p>
+                    )}
+                  </section>
+                </div>
+              )}
             </>
           )}
           {view === "Documentation" && (
@@ -456,8 +604,9 @@ export function CustomerConsole(p: Props) {
                 <h3>Quota and usage</h3>
                 <p>
                   Your balance is the actual remaining account quota. Dashboard
-                  usage covers requests sent through Somiti. Per-request
-                  monetary charges and cache statistics are not available here.
+                  usage covers requests sent through Somiti. Per-request charges
+                  and cache statistics are shown when provided by the account
+                  API.
                 </p>
                 <h3>Errors and retries</h3>
                 <p>
@@ -484,7 +633,7 @@ export function CustomerConsole(p: Props) {
                   <p>All times are UTC</p>
                 </div>
                 <label>
-                  Filter model
+                  {p.account ? "Filter this page by model" : "Filter model"}
                   <input
                     aria-label="History model ID"
                     placeholder="Exact model ID"
@@ -496,7 +645,11 @@ export function CustomerConsole(p: Props) {
                   Apply filter
                 </button>
               </div>
-              {table(history ?? p.logs)}
+              {table(
+                (history ?? initialLogs).filter(
+                  (l) => !p.account || !filter || l.model === filter,
+                ),
+              )}
               {error && <p role="alert">{error}</p>}
               <div className="console-pagination">
                 <button
@@ -507,7 +660,7 @@ export function CustomerConsole(p: Props) {
                 </button>
                 <span>Page {page}</span>
                 <button
-                  disabled={busy || (history ?? p.logs).length < 25}
+                  disabled={busy || (history ?? initialLogs).length < 25}
                   onClick={() => loadHistory(page + 1)}
                 >
                   Next

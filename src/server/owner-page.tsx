@@ -406,6 +406,7 @@ export async function OwnerPage({
         .orderBy(desc(apiKeys.createdAt))
         .limit(25)
         .offset((page - 1) * 25);
+      const quotas = await Promise.all(keys.map((key) => keyQuota(key)));
       content = (
         <>
           <Heading
@@ -426,12 +427,13 @@ export async function OwnerPage({
                 "Credential",
                 "Model access",
                 "API route",
+                "Credit left / total",
                 "Requests",
                 "Rate limit",
                 "Expiration",
                 "Status",
               ]}
-              rows={keys.map((k) => [
+              rows={keys.map((k, index) => [
                 <Link key="name" href={`/dashboard/keys/${k.id}`}>
                   {k.name}
                 </Link>,
@@ -442,6 +444,21 @@ export async function OwnerPage({
                   : k.upstreamProvider === "claude-n-codex"
                     ? "API v2"
                     : "Needs setup",
+                <span
+                  key="credit"
+                  className="key-credit"
+                  title="Live quota from the assigned API key"
+                >
+                  {quotas[index].remaining !== null &&
+                  quotas[index].allocated !== null ? (
+                    <>
+                      <strong>{usd(quotas[index].remaining)}</strong>
+                      <span> of {usd(quotas[index].allocated)}</span>
+                    </>
+                  ) : (
+                    <span className="muted">Unavailable</span>
+                  )}
+                </span>,
                 k.requests,
                 `${k.rateLimitPerMinute}/min`,
                 k.expiresAt?.toISOString().slice(0, 10) || "Never",

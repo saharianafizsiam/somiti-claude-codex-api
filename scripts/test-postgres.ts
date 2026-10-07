@@ -202,10 +202,22 @@ try {
     const result = await imported.json();
     assert.equal(result.added, expected);
     assert.equal(result.activated, expected === 9 ? 0 : 1);
-    const [catalogModel] = await database.select().from(schema.models).where(eq(schema.models.publicModelId,"v1/claude-opus-5"));
-    assert.equal(catalogModel.enabled,true);
-    assert.equal(catalogModel.supportsAnthropicEndpoint,true);
-    if (expected === 9) await database.update(schema.models).set({enabled:false,supportsAnthropicEndpoint:false,description:"Imported from API catalog. Review endpoint support and limits, then enable."}).where(eq(schema.models.id,catalogModel.id));
+    const [catalogModel] = await database
+      .select()
+      .from(schema.models)
+      .where(eq(schema.models.publicModelId, "v1/claude-opus-5"));
+    assert.equal(catalogModel.enabled, true);
+    assert.equal(catalogModel.supportsAnthropicEndpoint, true);
+    if (expected === 9)
+      await database
+        .update(schema.models)
+        .set({
+          enabled: false,
+          supportsAnthropicEndpoint: false,
+          description:
+            "Imported from API catalog. Review endpoint support and limits, then enable.",
+        })
+        .where(eq(schema.models.id, catalogModel.id));
   }
   for (const path of [
     "/dashboard",
@@ -475,6 +487,94 @@ try {
           () => document.documentElement.scrollWidth <= window.innerWidth,
         ),
       );
+      await database
+        .update(schema.apiKeys)
+        .set({ upstreamProvider: "claude-n-codex" })
+        .where(eq(schema.apiKeys.id, key.id));
+      await database
+        .update(schema.models)
+        .set({ provider: "claude-n-codex", supportsAnthropicEndpoint: true })
+        .where(eq(schema.models.id, model.id));
+      await page.reload();
+      await page.getByRole("heading",{name:"What a request costs"}).waitFor();
+      await page.getByRole("button",{name:"Token types",exact:true}).click();
+      await page.getByText("Account totals over the last 30 days · UTC").waitFor();
+      await page.getByRole("group",{name:"Cost view"}).getByRole("button",{name:"Models",exact:true}).click();
+      assert.equal(page.url(),stableUrl);
+      await page
+        .getByRole("navigation", { name: "Dashboard sections" })
+        .getByRole("button", { name: "Connect", exact: true })
+        .click();
+      const clients = page.getByRole("navigation", {
+        name: "Connection clients",
+      });
+      assert.equal(await clients.getByRole("button").count(), 38);
+      await page.getByLabel("Search clients").fill("codex");
+      await clients
+        .getByRole("button", { name: "Codex CLI", exact: true })
+        .click();
+      await page
+        .getByText("Not supported yet: this client requires /responses.")
+        .waitFor();
+      await page.getByLabel("Search clients").fill("");
+      await clients
+        .getByRole("button", { name: "Claude Code", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "PowerShell", exact: true })
+        .click();
+      assert.ok(
+        (
+          await page.getByLabel("Client connection instructions").innerText()
+        ).includes("$env:ANTHROPIC_BASE_URL"),
+      );
+      assert.equal(page.url(), stableUrl);
+      await page
+        .getByRole("button", { name: "Use my key in examples" })
+        .click();
+      await page
+        .getByRole("button", { name: "Hide key in examples" })
+        .waitFor();
+      assert.ok(
+        (
+          await page.getByLabel("Client connection instructions").innerText()
+        ).includes(credential),
+      );
+      await page.getByRole("button", { name: "Hide key in examples" }).click();
+      assert.ok(
+        !(
+          await page.getByLabel("Client connection instructions").innerText()
+        ).includes(credential),
+      );
+      assert.ok(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      );
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.screenshot({
+        path: ".tmp/screenshots/clients-mobile.png",
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.screenshot({
+        path: ".tmp/screenshots/clients-desktop.png",
+        fullPage: true,
+      });
+      for (const path of ["/v2/v1/messages", "/v2/v1/models"]) {
+        const r = await fetch(
+          `http://localhost:3100${path}`,
+          path.endsWith("messages")
+            ? {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: "{}",
+              }
+            : {},
+        );
+        assert.equal(r.status, 401);
+      }
       await page.setViewportSize({ width: 390, height: 844 });
       await page.goto("http://localhost:3100/dashboard");
       await page

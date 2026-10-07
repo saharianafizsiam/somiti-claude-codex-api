@@ -223,3 +223,21 @@ In admin Models, choose the provider and account, then **Import saved catalog (O
 The saved catalog contains model IDs and names only, never credentials. Importing requires no new schema migration beyond the existing upstream-key migration. Catalog listing does not verify generation support or pricing. Deployment and production catalog imports must be performed against your production project; local UI tests use an isolated database.
 
 Catalog activation fix: the import buttons now read **Import & enable saved models** and **Refresh & enable from API**. Imports enable new entries and restore untouched drafts made by the previous import flow. Claude entries use the messages endpoint; OpenAI entries use chat completions. Custom edits, deliberately disabled already-activated entries, and archived entries are preserved. For CUSTOM key access, explicitly assign the imported models in key settings. This supersedes the disabled-draft workflow above.
+
+### v2 connection guides
+
+The v2 Connect view now has the reference's 38 entries, grouped and searchable: Agents & IDEs, Chat applications, and Automation & SDK. Each entry has its own steps; configurable clients show the selected compatible model, Somiti URL, key placeholder, and configuration examples where applicable. The user can explicitly load their Somiti key into examples and hide it again; it is not stored in browser storage. macOS/Linux and PowerShell examples are supported.
+
+Anthropic SDK-style clients may append `/v1/messages` to the `/v2` base URL, so `/v2/v1/messages` delegates to the existing authenticated v2 messages gateway. `/v2/v1/models` likewise delegates to v2 model discovery. These aliases preserve provider/key/model enforcement. Direct `/v2/messages` remains available.
+
+Codex CLI is listed with an unsupported status because this gateway has no Responses API. Agents receive a warning when tool support is disabled for their model. Embeddings, count_tokens, advanced desktop gateway features, and browser CORS are not implied by the guide. The list is not a claim that all 38 clients have been end-to-end generation-tested.
+
+Reference checked 2026-10-07: supplied dashboard client list (no credential stored in this documentation). Configuration cross-checks: [Claude Code gateway documentation](https://code.claude.com/docs/en/llm-gateway), [Continue configuration reference](https://docs.continue.dev/reference), [OpenCode providers](https://docs.opencode.ai/docs/providers/), [OpenClaw custom providers](https://docs.openclaw.ai/gateway/config-tools/custom-providers). OpenCode example targets its v1 configuration schema.
+
+### v2 account history and statistics
+
+Customer v2 dashboards now fetch the assigned account's read-only requests, 30-day statistics (UTC), and model prices on the server. This includes activity before the key was added to Somiti. Account requests are displayed separately from the local gateway logs; records are never added together or imported into billing tables. The share-protected history endpoint pages 25 account requests at a time, with model filtering applied to the displayed page.
+
+The customer view includes account success rate, median/p95 latency, cache hit rate, today's spending, a 14-day spending chart, request charges/cache tokens/TTFT, and API-returned model prices. Repeated display names are grouped with alternate IDs available to copy. If an account endpoint fails, the UI reports unavailable rather than inventing zero activity. Only validated public fields leave the server; raw errors, account keys, and provider metadata are discarded. No new environment variable or database migration is required.
+
+The v2 cost panel now uses compact two-column model rows with live input-price badges ($/M), expandable output/cache rates, and alternate model IDs. The Token types tab shows input, output, cache-read, and cache-write totals summed from the same full 30-day account statistics (UTC), plus the reported cache-hit rate. Missing categories remain unavailable. No price or token count is taken from a screenshot or hardcoded example.
