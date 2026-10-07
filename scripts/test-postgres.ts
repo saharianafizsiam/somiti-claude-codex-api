@@ -509,6 +509,24 @@ try {
       );
       await page.goto(dashboardUrl);
       await page.getByRole("heading", { name: "API configuration" }).waitFor();
+      const successDetails = page.getByRole("button", {
+        name: "Success rate details",
+        exact: true,
+      });
+      await successDetails.hover();
+      await page.getByRole("tooltip").waitFor();
+      assert.ok(
+        (await page.getByRole("tooltip").innerText()).includes("requests"),
+      );
+      await successDetails.focus();
+      await successDetails.press("Escape");
+      assert.equal(await page.getByRole("tooltip").count(), 0);
+      assert.equal(
+        await page
+          .locator("body")
+          .evaluate((el) => getComputedStyle(el).backgroundImage),
+        "none",
+      );
       await page.screenshot({
         path: ".tmp/screenshots/customer-desktop.png",
         fullPage: true,

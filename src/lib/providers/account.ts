@@ -82,7 +82,7 @@ export type AccountInfo = {
       cacheRead: number | null;
       cacheWrite: number | null;
     };
-    days: { date: string; spend: string }[];
+    days: { date: string; spend: string; requests: number; errors: number }[];
   } | null;
   prices: Record<
     string,
@@ -189,7 +189,12 @@ export function parseAccountStats(body: unknown): AccountInfo["stats"] {
         : null,
     },
     days: s.days
-      .map((d) => ({ date: d.date, spend: d.charged_usd }))
+      .map((d) => ({
+        date: d.date,
+        spend: d.charged_usd,
+        requests: d.requests,
+        errors: d.errors,
+      }))
       .sort((a, b) => a.date.localeCompare(b.date)),
   };
 }

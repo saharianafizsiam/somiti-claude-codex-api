@@ -11,6 +11,7 @@ import {
 import { CopyValue, SecretReveal } from "./actions";
 import { AutoRefresh } from "./refresh";
 import { ModelCosts } from "./model-costs";
+import { UsageTooltip } from "./usage-tooltip";
 import { ClientConnectionGuides } from "./client-connection-guides";
 export type CustomerLog = {
   cacheRead?: number | null;
@@ -451,7 +452,39 @@ export function CustomerConsole(p: Props) {
                   },
                 ].map(({ label, value, note }) => (
                   <section className="console-panel" key={label}>
-                    <p>{label}</p>
+                    <div className="metric-heading">
+                      <p>{label}</p>
+                      <UsageTooltip
+                        label={`${label} details`}
+                        detail={
+                          label === "Success rate"
+                            ? accountStats
+                              ? `${accountStats.requests.toLocaleString()} requests, ${accountStats.days.reduce((n, d) => n + d.errors, 0).toLocaleString()} errors over 30 days. Success excludes failed requests.`
+                              : p.account
+                                ? "Account statistics are unavailable."
+                                : `${p.stats.requests.toLocaleString()} recorded requests, ${p.stats.errors.toLocaleString()} errors over 30 days.`
+                            : label === "Response speed"
+                              ? accountStats
+                                ? `Median: ${accountStats.latency == null ? "unavailable" : (accountStats.latency / 1000).toFixed(2) + "s"}. 95th percentile: ${accountStats.p95 == null ? "unavailable" : (accountStats.p95 / 1000).toFixed(2) + "s"}. Account request duration over 30 days; not your browser network latency.`
+                                : p.account
+                                  ? "Account timing is unavailable."
+                                  : "Average duration of requests recorded through Somiti over 30 days."
+                              : label === "Cache hit"
+                                ? accountStats
+                                  ? `Cache read: ${accountStats.tokens.cacheRead?.toLocaleString() ?? "unavailable"} tokens. Cache write: ${accountStats.tokens.cacheWrite?.toLocaleString() ?? "unavailable"} tokens. Hit rate is reported by the account API for 30 days.`
+                                  : "Account cache statistics are unavailable."
+                                : label === "Tokens"
+                                  ? `${p.stats.tokens.toLocaleString()} recorded tokens over 30 days.`
+                                  : accountStats
+                                    ? `${accountStats.today.toLocaleString()} requests and ${money(accountStats.todaySpend)} charged since 00:00 UTC.`
+                                    : p.account
+                                      ? "Today's account statistics are unavailable."
+                                      : `${p.stats.today.toLocaleString()} requests recorded since 00:00 UTC.`
+                        }
+                      >
+                        ⓘ
+                      </UsageTooltip>
+                    </div>
                     <strong>{value}</strong>
                     <small>{note}</small>
                   </section>
@@ -471,9 +504,10 @@ export function CustomerConsole(p: Props) {
                       const date = new Date();
                       date.setUTCDate(date.getUTCDate() - 13 + i);
                       const day = date.toISOString().slice(0, 10);
-                      const spend =
-                        accountStats.days.find((d) => d.date === day)?.spend ||
-                        "0";
+                      const record = accountStats.days.find(
+                        (d) => d.date === day,
+                      );
+                      const spend = record?.spend;
                       const max = Math.max(
                         1,
                         ...accountStats.days
@@ -487,14 +521,32 @@ export function CustomerConsole(p: Props) {
                           .map((d) => Number(d.spend)),
                       );
                       return (
-                        <div key={day} title={`${day}: ${money(spend)}`}>
-                          <span
-                            style={{
-                              height: `${Math.max(1, (Number(spend) / max) * 130)}px`,
-                            }}
-                          />
+                        <div key={day}>
+                          <UsageTooltip
+                            label={`Spending on ${day}`}
+                            detail={
+                              <>
+                                <b>
+                                  {spend === undefined
+                                    ? "Unavailable"
+                                    : money(spend)}{" "}
+                                  · {day} UTC
+                                </b>
+                                <br />
+                                {record
+                                  ? `${record.requests.toLocaleString()} requests · ${record.errors.toLocaleString()} errors`
+                                  : "No daily record returned for this date."}
+                              </>
+                            }
+                          >
+                            <span
+                              className="spend-bar"
+                              style={{
+                                height: `${Math.max(2, (Number(spend ?? 0) / max) * 130)}px`,
+                              }}
+                            />
+                          </UsageTooltip>
                           <small>{day.slice(5)}</small>
-                          <small>{money(spend)}</small>
                         </div>
                       );
                     })}

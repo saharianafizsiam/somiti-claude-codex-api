@@ -53,12 +53,38 @@ describe("account dashboard data", () => {
     expect(stats.success).toBe(99.8);
     expect(stats.cacheHit).toBe(98.5);
     expect(stats.requests).toBe(1000);
+    expect(stats.days[0]).toEqual({
+      date: "2026-10-06",
+      spend: "95.05",
+      requests: 1000,
+      errors: 2,
+    });
     expect(stats.latency).toBe(11400);
     expect(stats.tokens.input).toBeNull();
   });
-  it("sums each token category across daily account statistics",()=>{
-    const day={date:"2026-10-06",requests:1,errors:0,charged_usd:"1",input_tokens:150,output_tokens:190,cache_read_tokens:10150,cache_write_tokens:860};
-    const stats=parseAccountStats({unit:"usd",latency:{p50_ms:1,p95_ms:1},today:{requests:0,charged_usd:"0"},cache:{hit_rate:.985},days:[day,{...day,date:"2026-10-07"}]})!;
-    expect(stats.tokens).toEqual({input:300,output:380,cacheRead:20300,cacheWrite:1720});
+  it("sums each token category across daily account statistics", () => {
+    const day = {
+      date: "2026-10-06",
+      requests: 1,
+      errors: 0,
+      charged_usd: "1",
+      input_tokens: 150,
+      output_tokens: 190,
+      cache_read_tokens: 10150,
+      cache_write_tokens: 860,
+    };
+    const stats = parseAccountStats({
+      unit: "usd",
+      latency: { p50_ms: 1, p95_ms: 1 },
+      today: { requests: 0, charged_usd: "0" },
+      cache: { hit_rate: 0.985 },
+      days: [day, { ...day, date: "2026-10-07" }],
+    })!;
+    expect(stats.tokens).toEqual({
+      input: 300,
+      output: 380,
+      cacheRead: 20300,
+      cacheWrite: 1720,
+    });
   });
 });
