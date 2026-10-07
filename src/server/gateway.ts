@@ -227,20 +227,18 @@ export async function gateway(
     let response: Response;
     try {
       response = await upstream.send(endpoint, payload, abort.signal);
-    } catch {
+    } catch (error) {
       clearTimeout(timeout);
-      await settle(
-        reservation.requestId,
-        unavailable,
-        502,
-        Date.now() - started,
-        "provider_error",
-      );
-      throw new AppError(
-        "provider_error",
-        "The upstream provider could not complete the request.",
-        502,
-      );
+      const configurationError = error instanceof AppError && error.code === "provider_not_configured";
+      const timedOut = abort.signal.aborted;
+      const code = configurationError ? "provider_not_configured" : timedOut ? "provider_timeout" : "provider_connection_failed";
+      // Only fixed diagnostic labels: never log URLs, headers, keys, or raw errors.
+      console.error("somiti_provider_failure", { requestId: reservation.requestId, provider: selectedProvider, endpoint, code });
+      await settle(reservation.requestId, unavailable, configurationError ? 503 : timedOut ? 504 : 502, Date.now() - started, code);
+      if (configurationError) throw error;
+      throw new AppError(code, timedOut
+        ? "The API connection timed out. Contact your administrator with the request time."
+        : "The API connection failed. Your administrator must check the server endpoint configuration and connectivity.", timedOut ? 504 : 502);
     }
     if (!response.ok) {
       let quotaExhausted = response.status === 402;

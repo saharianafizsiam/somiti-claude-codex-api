@@ -204,3 +204,15 @@ it("rejects native IDs absent from the key's allowed catalog", async () => {
  const r = await gateway(request({model:"gpt-test", input:"Hi"}), "responses", "claude-n-codex");
  expect(r.status).toBe(404); expect(f.send).not.toHaveBeenCalled();
 });
+
+it("preserves safe configuration errors instead of masking them as 502", async () => {
+ const { AppError } = await import("@/lib/errors");
+ f.send.mockRejectedValue(new AppError("provider_not_configured", "The selected upstream endpoint is not configured.",503));
+ const r = await gateway(request({model:"gpt-test",input:"Hi"}),"responses","claude-n-codex");
+ expect(r.status).toBe(503); expect((await r.json()).error.code).toBe("provider_not_configured");
+});
+it("does not expose transport errors containing credentials", async () => {
+ f.send.mockRejectedValue(new Error("secret-key-at-private-url"));
+ const r = await gateway(request({model:"gpt-test",input:"Hi"}),"responses","claude-n-codex");
+ expect(r.status).toBe(502); const body = await r.text(); expect(body).toContain("provider_connection_failed"); expect(body).not.toContain("secret-key");
+});
