@@ -1,3 +1,4 @@
+import { verifiedVision } from "../models/imported-capabilities";
 import { createHash } from "node:crypto";
 export function importedModel(
   provider: "mwapi" | "claude-n-codex",
@@ -22,6 +23,7 @@ export function importedModel(
       family === "OPENAI" || provider === "claude-n-codex",
     supportsAnthropicEndpoint: family === "CLAUDE",
     supportsStreaming: true,
+    supportsVision: verifiedVision(provider, row.id),
     supportsTools: true,
     supportsReasoning: true,
     description:
