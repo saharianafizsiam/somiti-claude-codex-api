@@ -40,6 +40,7 @@ type Model = {
 };
 type Props = {
   account?: AccountInfo | null;
+  pricing?: import("@/lib/providers/pricing").PublishedPricing | null;
   name: string;
   shareToken: string;
   prefix: string;
@@ -231,8 +232,8 @@ export function CustomerConsole(p: Props) {
       same.find((other) => other.id.startsWith("v2/claude-")) || same[0];
     return canonical.id === m.id;
   });
-  const catalog = p.account ? (
-    <ModelCosts models={p.models} account={p.account} />
+  const catalog = p.account || p.pricing ? (
+    <ModelCosts models={p.models} account={p.account ?? { history: null, stats: null, prices: p.pricing!.prices }} pricingNote={p.pricing?.note} />
   ) : (
     <section className="console-panel">
       <div className="console-section-head">

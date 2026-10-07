@@ -33,9 +33,9 @@ export function ProviderGuide({ provider }: { provider: string }) {
             </li>
           </ol>
           <p className="muted">
-            The supplied dashboards both showed zero remaining balance when
-            checked. Top up the corresponding account before live requests.
-            Endpoint instructions were verified; generation has not been tested.
+            Each customer key needs its own assigned account credential and
+            available quota. Check the customer balance before testing
+            requests.
           </p>
         </>
       ) : (
@@ -58,10 +58,10 @@ export function ProviderGuide({ provider }: { provider: string }) {
             </li>
           </ol>
           <p className="muted">
-            Read-only endpoints verified: <code>GET /v1/models</code> and{" "}
-            <code>GET /v1/usage</code>. Usage includes the key’s quota,
-            remaining balance and spend. Generation paths still require
-            confirmation.
+            Messages: <code>/v1/messages</code>. Codex:{" "}
+            <code>/v1/responses</code>. Check credit with{" "}
+            <code>GET /v1/usage</code>. A quota-exhausted key needs a top-up or
+            replacement; changing model names will not restore credit.
           </p>
         </>
       )}
@@ -74,3 +74,4 @@ export function ProviderGuide({ provider }: { provider: string }) {
     </section>
   );
 }
+

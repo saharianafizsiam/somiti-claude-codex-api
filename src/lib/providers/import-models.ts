@@ -22,6 +22,8 @@ export function importedModel(
       family === "OPENAI" || provider === "claude-n-codex",
     supportsAnthropicEndpoint: family === "CLAUDE",
     supportsStreaming: true,
+    supportsTools: true,
+    supportsReasoning: true,
     description:
       "Imported from API catalog. Uses the account family's standard endpoint; generation availability depends on the assigned key.",
   };

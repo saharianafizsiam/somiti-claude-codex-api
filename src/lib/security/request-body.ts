@@ -1,6 +1,9 @@
 import { AppError } from "../errors";
 /** Bound streamed bodies as they arrive, including chunked requests without Content-Length. */
-export async function readJson(req: Request, limit = 65536): Promise<unknown> {
+export async function readJson(
+  req: Pick<Request, "body" | "headers">,
+  limit = 65536,
+): Promise<unknown> {
   const declared = Number(req.headers.get("content-length"));
   if (Number.isFinite(declared) && declared > limit)
     throw new AppError("invalid_request", "Request body is too large.", 413);

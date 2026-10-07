@@ -1,3 +1,4 @@
+import { resolveClientAlias } from "@/lib/models/client-alias";
 import { readJson } from "@/lib/security/request-body";
 import { eq, or } from "drizzle-orm";
 import { z } from "zod";
@@ -17,7 +18,10 @@ const bodySchema = z
     model: z.string().min(1).max(200),
     messages: z
       .array(z.object({ role: z.string(), content: z.unknown() }).passthrough())
-      .min(1),
+      .min(1)
+      .optional(),
+    input: z.union([z.string(), z.array(z.unknown())]).optional(),
+    max_output_tokens: z.number().int().positive().optional(),
     stream: z.boolean().optional().default(false),
     max_tokens: z.number().int().positive().optional(),
     max_completion_tokens: z.number().int().positive().optional(),
@@ -31,8 +35,35 @@ export async function gateway(
   const started = Date.now();
   try {
     const key = await authenticate(req);
+    if (selectedProvider === "mwapi" && endpoint === "responses/input_tokens")
+      throw new AppError(
+        "not_supported",
+        "This account route does not provide Responses token counting. Messages token counting is available.",
+        501,
+      );
     const json = await readJson(req, 2_000_000);
     const body = bodySchema.parse(json);
+    const responses = endpoint.startsWith("responses");
+    const auxiliary =
+      endpoint.includes("/compact") ||
+      endpoint.includes("input_tokens") ||
+      endpoint.includes("count_tokens");
+    if (responses ? body.input === undefined : !body.messages)
+      throw new AppError(
+        "invalid_request",
+        responses ? "input is required." : "messages is required.",
+      );
+    if (
+      body.background === true ||
+      body.store === true ||
+      body.previous_response_id
+    )
+      throw new AppError(
+        "invalid_request",
+        "Use stateless requests: store=false, background=false, and include conversation input.",
+      );
+    if (auxiliary && body.stream)
+      throw new AppError("invalid_request", "This endpoint does not stream.");
     const [row] = await db()
       .select({ model: models })
       .from(models)
@@ -44,8 +75,16 @@ export async function gateway(
         ),
       )
       .limit(1);
-    if (!row) throw new AppError("model_not_found", "Model not found.", 404);
-    const model = row.model;
+    const allowedModels = await availableModels(key);
+    const model =
+      row?.model ??
+      resolveClientAlias(body.model, selectedProvider, allowedModels);
+    if (!model)
+      throw new AppError(
+        "model_not_found",
+        "Model not found or not enabled for this key.",
+        404,
+      );
     if (model.provider !== selectedProvider)
       throw new AppError(
         "model_not_allowed",
@@ -58,15 +97,18 @@ export async function gateway(
         "This model is currently unavailable.",
         403,
       );
-    if (!(await availableModels(key)).some((m) => m.id === model.id))
+    if (!allowedModels.some((m) => m.id === model.id))
       throw new AppError(
         "model_not_allowed",
         "This API key does not have access to this model.",
         403,
       );
     if (
-      (endpoint === "messages" && !model.supportsAnthropicEndpoint) ||
-      (endpoint === "chat/completions" && !model.supportsOpenaiEndpoint)
+      (endpoint.startsWith("messages") && !model.supportsAnthropicEndpoint) ||
+      (endpoint === "chat/completions" && !model.supportsOpenaiEndpoint) ||
+      (responses &&
+        !model.supportsOpenaiEndpoint &&
+        !model.supportsAnthropicEndpoint)
     )
       throw new AppError(
         "endpoint_not_supported",
@@ -82,7 +124,13 @@ export async function gateway(
         "invalid_request",
         "Tools are not supported for this model.",
       );
-    if (body.response_format && !model.supportsStructuredOutput)
+    if (
+      (body.response_format ||
+        (body.text &&
+          typeof body.text === "object" &&
+          "format" in body.text)) &&
+      !model.supportsStructuredOutput
+    )
       throw new AppError(
         "invalid_request",
         "Structured output is not supported.",
@@ -92,15 +140,21 @@ export async function gateway(
         "invalid_request",
         "Only one completion per request is supported.",
       );
-    if ((body.reasoning_effort || body.thinking) && !model.supportsReasoning)
+    if (
+      (body.reasoning_effort || body.thinking || body.reasoning) &&
+      !model.supportsReasoning
+    )
       throw new AppError(
         "invalid_request",
         "Reasoning is not supported for this model.",
       );
     if (
       !model.supportsVision &&
-      body.messages.some(
+      (body.messages ?? (Array.isArray(body.input) ? body.input : [])).some(
         (m) =>
+          m &&
+          typeof m === "object" &&
+          "content" in m &&
           Array.isArray(m.content) &&
           m.content.some(
             (v) =>
@@ -115,7 +169,10 @@ export async function gateway(
         "Vision is not supported for this model.",
       );
     const maxOutput =
-      body.max_completion_tokens ?? body.max_tokens ?? model.maxOutputTokens;
+      body.max_output_tokens ??
+      body.max_completion_tokens ??
+      body.max_tokens ??
+      model.maxOutputTokens;
     if (maxOutput > model.maxOutputTokens)
       throw new AppError(
         "invalid_request",
@@ -150,7 +207,16 @@ export async function gateway(
       ...body,
       model: model.upstreamModelId,
     };
-    if (body.max_completion_tokens !== undefined) {
+    if (responses) {
+      delete payload.max_tokens;
+      delete payload.max_completion_tokens;
+      if (!auxiliary) {
+        payload.max_output_tokens = maxOutput;
+        payload.store = false;
+      }
+    } else if (auxiliary) {
+      delete payload.max_tokens;
+    } else if (body.max_completion_tokens !== undefined) {
       payload.max_completion_tokens = maxOutput;
       delete payload.max_tokens;
     } else payload.max_tokens = maxOutput;
@@ -175,8 +241,31 @@ export async function gateway(
       );
     }
     if (!response.ok) {
-      clearTimeout(timeout);
-      await response.body?.cancel();
+      let quotaExhausted = response.status === 402;
+      try {
+        const errorBody = await readJson(response, 16384);
+        if (errorBody && typeof errorBody === "object") {
+          const top = errorBody as Record<string, unknown>;
+          const nested =
+            top.error && typeof top.error === "object"
+              ? (top.error as Record<string, unknown>)
+              : {};
+          quotaExhausted ||= [top.code, nested.code, nested.type].some(
+            (code) =>
+              typeof code === "string" &&
+              [
+                "API_KEY_QUOTA_EXHAUSTED",
+                "INSUFFICIENT_QUOTA",
+                "QUOTA_EXHAUSTED",
+              ].includes(code.toUpperCase()),
+          );
+        }
+      } catch {
+        /* Never expose raw provider errors or credentials. */
+      } finally {
+        clearTimeout(timeout);
+        await response.body?.cancel().catch(() => {});
+      }
       await settle(
         reservation.requestId,
         unavailable,
@@ -184,10 +273,25 @@ export async function gateway(
         Date.now() - started,
         "provider_error",
       );
+      const status = quotaExhausted
+        ? 402
+        : [400, 402, 413, 429].includes(response.status)
+          ? response.status
+          : 502;
       throw new AppError(
-        "provider_error",
-        "The upstream provider rejected the request.",
-        502,
+        quotaExhausted
+          ? "quota_exhausted"
+          : status === 429
+            ? "rate_limit_exceeded"
+            : "provider_error",
+        status === 429
+          ? "The assigned account is rate limited. Wait before retrying; contact your administrator if this continues."
+          : status === 402
+            ? "Your account quota is exhausted. Contact your administrator to restore credit. Retrying will not restore the balance."
+            : status === 400
+              ? "The assigned model rejected these request options. Check the model ID, token limit, and enabled capabilities."
+              : "The assigned account could not complete the request. Contact your administrator with the request time.",
+        status,
       );
     }
     const responseHeaders = {
@@ -204,7 +308,7 @@ export async function gateway(
           response.status,
           Date.now() - started,
         );
-        if (value && typeof value === "object")
+        if (value && typeof value === "object" && value.model)
           value.model = model.publicModelId;
         return Response.json(value, { headers: responseHeaders });
       } catch {
@@ -272,6 +376,8 @@ export async function gateway(
             if (!disconnected)
               controller.error(new Error("Upstream stream interrupted"));
           } finally {
+            if (collector.failed || (responses && !collector.responseCompleted))
+              failure ||= "stream_incomplete";
             clearTimeout(timeout);
             abort.signal.removeEventListener("abort", wake);
             try {
@@ -289,7 +395,14 @@ export async function gateway(
                 );
               failure = "settlement_failed";
             } finally {
-              if (!disconnected && !failure) controller.close();
+              if (!disconnected) {
+                if (!failure) controller.close();
+                else {
+                  try {
+                    controller.error(new Error("Upstream stream failed"));
+                  } catch {}
+                }
+              }
               resolveDone();
             }
           }

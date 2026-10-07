@@ -1,5 +1,7 @@
 # Somiti API
 
+For the current Responses/Codex support, Opus tools-error repair, client verification results, and production release steps, see [CLIENT-READINESS.md](./CLIENT-READINESS.md). It supersedes older compatibility notes below.
+
 A Next.js App Router API reseller console with PostgreSQL accounting, owner authentication, encrypted customer credentials, private read-only dashboards, and a configurable upstream gateway. Designed for one Vercel project serving `somiti.page` and `api.somiti.page`.
 
 ## Admin login

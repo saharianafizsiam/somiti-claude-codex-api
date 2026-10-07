@@ -15,9 +15,11 @@ const tokens = (v: number | null | undefined) =>
 export function ModelCosts({
   models,
   account,
+  pricingNote,
 }: {
   models: Model[];
   account: AccountInfo;
+  pricingNote?: string;
 }) {
   const [tab, setTab] = useState("Models");
   const [search, setSearch] = useState("");
@@ -42,7 +44,7 @@ export function ModelCosts({
       <div className="console-section-head">
         <div>
           <h2>What a request costs</h2>
-          <p>Live model rates and account token usage.</p>
+          <p>{pricingNote ? "Published model rates · USD per 1 million tokens" : "Live model rates and account token usage."}</p>
         </div>
         {tab === "Models" && (
           <input
@@ -54,7 +56,7 @@ export function ModelCosts({
         )}
       </div>
       <div className="cost-tabs" role="group" aria-label="Cost view">
-        {["Models", "Token types"].map((t) => (
+        {(pricingNote ? ["Models"] : ["Models", "Token types"]).map((t) => (
           <button key={t} aria-pressed={t === tab} onClick={() => setTab(t)}>
             {t}
           </button>
@@ -110,9 +112,7 @@ export function ModelCosts({
           </div>
           {!groups.length && <p>No matching enabled models.</p>}
           <small className="cost-footnote">
-            The badge is the input price per 1 million tokens. Expand Rates for
-            output and cache prices. Actual charges are shown in request
-            history.
+            {pricingNote || "The badge is the input price per 1 million tokens. Expand Rates for output and cache prices. Actual charges are shown in request history."}
           </small>
         </>
       ) : (

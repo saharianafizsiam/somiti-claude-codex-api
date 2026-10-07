@@ -122,6 +122,8 @@ export async function adminAction(action: string, input: unknown) {
                 supportsOpenaiEndpoint: defaults.supportsOpenaiEndpoint,
                 supportsAnthropicEndpoint: defaults.supportsAnthropicEndpoint,
                 supportsStreaming: true,
+                supportsTools: defaults.supportsTools,
+                supportsReasoning: defaults.supportsReasoning,
                 description: defaults.description,
                 updatedAt: new Date(),
               })
@@ -133,16 +135,26 @@ export async function adminAction(action: string, input: unknown) {
             !draft.archivedAt &&
             draft.enabled &&
             draft.visible &&
-            draft.provider === "claude-n-codex" &&
-            draft.family === "CLAUDE" &&
-            draft.supportsAnthropicEndpoint &&
-            !draft.supportsOpenaiEndpoint &&
+            ["mwapi", "claude-n-codex"].includes(draft.provider) &&
+            ["CLAUDE", "OPENAI"].includes(draft.family) &&
+            ((draft.provider === "claude-n-codex" &&
+              !draft.supportsOpenaiEndpoint) ||
+              !draft.supportsTools ||
+              !draft.supportsReasoning) &&
             draft.description ===
               "Imported from API catalog. Uses the account family's standard endpoint; generation availability depends on the assigned key."
           ) {
             await tx
               .update(models)
-              .set({ supportsOpenaiEndpoint: true, updatedAt: new Date() })
+              .set({
+                supportsOpenaiEndpoint:
+                  draft.provider === "claude-n-codex" ||
+                  draft.family === "OPENAI" ||
+                  draft.supportsOpenaiEndpoint,
+                supportsTools: true,
+                supportsReasoning: true,
+                updatedAt: new Date(),
+              })
               .where(eq(models.id, draft.id));
             activated++;
           }

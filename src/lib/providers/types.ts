@@ -1,4 +1,10 @@
-export type Endpoint = "chat/completions" | "messages";
+export type Endpoint =
+  | "chat/completions"
+  | "messages"
+  | "responses"
+  | "responses/compact"
+  | "responses/input_tokens"
+  | "messages/count_tokens";
 export interface NormalizedUsage {
   inputTokens: number;
   outputTokens: number;

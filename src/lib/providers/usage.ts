@@ -12,15 +12,16 @@ function token(v: unknown) {
     : undefined;
 }
 export function normalizeUsage(value: unknown): NormalizedUsage {
-  const obj = record(value);
+  const outer = record(value);
+  const obj = outer.response ? record(outer.response) : outer;
   const u = record(obj.usage);
-  const details = record(u.prompt_tokens_details);
+  const details = record(u.prompt_tokens_details ?? u.input_tokens_details);
   const base = token(u.prompt_tokens ?? u.input_tokens);
   const output = token(u.completion_tokens ?? u.output_tokens);
   if (base === undefined || output === undefined) return { ...unavailable };
   const cached = token(details.cached_tokens ?? u.cache_read_input_tokens) ?? 0;
   const input =
-    u.prompt_tokens !== undefined
+    u.prompt_tokens !== undefined || u.input_tokens_details !== undefined
       ? base
       : base + cached + (token(u.cache_creation_input_tokens) ?? 0);
   if (cached > input || input + output > 2147483647) return { ...unavailable };

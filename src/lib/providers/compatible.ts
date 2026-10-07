@@ -16,7 +16,13 @@ export function configuration(
           ? env(`${family}_API_KEY`)
           : undefined
         : env("API_KEY"),
-    path: env(endpoint === "messages" ? "MESSAGES_PATH" : "CHAT_PATH"),
+    path: endpoint.startsWith("responses")
+      ? (env("RESPONSES_PATH") || "/v1/responses") +
+        endpoint.slice("responses".length)
+      : endpoint === "messages/count_tokens"
+        ? (env("MESSAGES_PATH") || "/v1/messages") + "/count_tokens"
+        : env(endpoint === "messages" ? "MESSAGES_PATH" : "CHAT_PATH") ||
+          `/v1/${endpoint}`,
     header: env("AUTH_HEADER") || "Authorization",
     authPrefix: env("AUTH_PREFIX") ?? "Bearer",
   };
@@ -70,7 +76,7 @@ export function compatibleProvider(
         headers: {
           "Content-Type": "application/json",
           [c.header]: [c.authPrefix, c.key].filter(Boolean).join(" "),
-          ...(endpoint === "messages"
+          ...(endpoint.startsWith("messages")
             ? { "anthropic-version": "2023-06-01" }
             : {}),
         },

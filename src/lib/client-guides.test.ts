@@ -26,7 +26,7 @@ describe("v2 client guides", () => {
     expect(new Set(clientGuides.map((g) => g.id)).size).toBe(38);
     for (const g of clientGuides) {
       const models = compatibleModels(g, [claude, gpt]);
-      if (g.protocol === "responses") expect(models).toHaveLength(0);
+      if (g.protocol === "responses") expect(models).toEqual([claude, gpt]);
       if (g.protocol === "anthropic") expect(models).toEqual([claude]);
       if (g.protocol === "openai") expect(models).toEqual([gpt]);
     }
@@ -46,7 +46,7 @@ describe("v2 client guides", () => {
             /mwapi|claude-n-codex|freemodel|sk-myapi/i,
           );
           expect(content.endpoint).toMatch(
-            /^https:\/\/api\.somiti\.page\/v2\/(messages|chat\/completions)$/,
+            /^https:\/\/api\.somiti\.page\/v2\/(messages|chat\/completions|responses)$/,
           );
           for (const snippet of content.snippets)
             if (snippet.title.includes(".json"))

@@ -8,6 +8,9 @@ describe("catalog imports", () => {
     expect(a.publicModelId).not.toBe(b.publicModelId);
     expect(b.supportsOpenaiEndpoint).toBe(true);
     expect(b.supportsAnthropicEndpoint).toBe(true);
+    expect(b.supportsTools).toBe(true);
+    expect(b.supportsReasoning).toBe(true);
+    expect(a.supportsTools).toBe(true);
     expect(a.upstreamModelId).toBe(row.id);
     expect(a.enabled).toBe(true);
     expect(a.supportsOpenaiEndpoint).toBe(false);

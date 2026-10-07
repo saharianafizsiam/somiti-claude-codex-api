@@ -5,6 +5,8 @@ export class UsageCollector {
   private decoder = new TextDecoder();
   private anthropic: Record<string, unknown> = {};
   usage: NormalizedUsage = { ...unavailable };
+  failed = false;
+  responseCompleted = false;
   push(chunk: Uint8Array) {
     this.buffer += this.decoder.decode(chunk, { stream: true });
     if (this.buffer.length > 2_000_000) throw new Error("Oversized SSE frame");
@@ -20,6 +22,18 @@ export class UsageCollector {
       if (!data || data === "[DONE]") continue;
       try {
         const value = JSON.parse(data);
+        if (
+          value.type === "response.failed" ||
+          value.type === "error" ||
+          value.error ||
+          value.response?.error
+        )
+          this.failed = true;
+        if (
+          value.type === "response.completed" ||
+          value.type === "response.incomplete"
+        )
+          this.responseCompleted = true;
         if (value.type === "message_start")
           this.anthropic = value.message?.usage ?? {};
         if (value.type === "message_delta") {
@@ -59,9 +73,21 @@ export class PublicStream {
       }
       try {
         const value = JSON.parse(data);
+        if (
+          ["codex.response.metadata", "responsesapi.websocket_timing"].includes(
+            value.type,
+          )
+        )
+          continue;
         if (value.model) value.model = this.model;
         if (value.message?.model) value.message.model = this.model;
-        if (value.error || value.type === "error") {
+        if (value.response?.model) value.response.model = this.model;
+        if (
+          value.error ||
+          value.response?.error ||
+          value.type === "error" ||
+          value.type === "response.failed"
+        ) {
           result +=
             'event: error\ndata: {"error":{"type":"provider_error","message":"Upstream stream failed."}}\n\n';
           continue;

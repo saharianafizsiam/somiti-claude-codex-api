@@ -17,11 +17,7 @@ export function ClientConnectionGuides({
   shareToken: string;
 }) {
   const isV1 = baseUrl.endsWith("/v1");
-  const guides = isV1
-    ? clientGuides.filter((g) =>
-        ["claude-code", "codex", "opencode"].includes(g.id),
-      )
-    : clientGuides;
+  const guides = clientGuides;
   const [clientId, setClientId] = useState("claude-code");
   const [search, setSearch] = useState("");
   const [modelId, setModelId] = useState("");
@@ -48,7 +44,15 @@ export function ClientConnectionGuides({
     <>
       <section className="console-panel console-url-guide">
         <h2>Choose the right connection URL</h2>
-        <p>Use your Somiti key with the exact model ID listed below.</p>
+        <p>
+          1. Choose your app. 2. Choose an allowed model. 3. Copy its settings
+          and start a new session.
+        </p>
+        <p>
+          These instructions use your assigned {isV1 ? "API v1" : "API v2"}{" "}
+          route. Client features depend on the selected model and application
+          version.
+        </p>
         <div className="console-url-grid">
           <div>
             <h3>Anthropic / Claude provider</h3>
@@ -118,120 +122,114 @@ export function ClientConnectionGuides({
             ))}
           </ol>
           {guide.note && <p className="console-guide-note">{guide.note}</p>}
-          {guide.protocol === "responses" ? (
-            <p role="status" className="console-guide-note">
-              Not supported yet: this client requires /responses.
-            </p>
-          ) : (
-            guide.id !== "capabilities" && (
-              <>
-                {!model ? (
-                  <p role="status" className="console-guide-note">
-                    No compatible model is enabled for this key. Ask your
-                    administrator to refresh the API v2 catalog in Models, or
-                    enable Chat Completions for a supported model.{" "}
-                    {guide.protocol === "anthropic"
-                      ? "This client needs a messages model."
-                      : guide.protocol === "openai"
-                        ? "This client needs a chat-completions model."
-                        : "Ask your administrator to enable a model."}
-                  </p>
-                ) : (
-                  <>
-                    <label>
-                      Connection model
-                      <select
-                        aria-label="Connection model"
-                        value={model.id}
-                        onChange={(e) => setModelId(e.target.value)}
-                      >
-                        {available.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name} · {m.id}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    {guide.group === "Agents & IDEs" && !model.tools && (
-                      <p className="console-guide-note">
-                        Agent tool use is disabled for this model. Your
-                        administrator must enable supported tools before agent
-                        tasks will work.
-                      </p>
-                    )}
-                    <div className="console-guide-controls">
-                      <div role="group" aria-label="Operating system">
-                        <button
-                          aria-pressed={os === "unix"}
-                          onClick={() => setOs("unix")}
-                        >
-                          macOS / Linux
-                        </button>
-                        <button
-                          aria-pressed={os === "windows"}
-                          onClick={() => setOs("windows")}
-                        >
-                          PowerShell
-                        </button>
-                      </div>
+          {guide.id !== "capabilities" && (
+            <>
+              {!model ? (
+                <p role="status" className="console-guide-note">
+                  No compatible model is enabled for this key. Ask your
+                  administrator to refresh the API v2 catalog in Models, or
+                  enable Chat Completions for a supported model.{" "}
+                  {guide.protocol === "anthropic"
+                    ? "This client needs a messages model."
+                    : guide.protocol === "openai"
+                      ? "This client needs a compatible OpenAI-protocol model."
+                      : "Ask your administrator to enable a model."}
+                </p>
+              ) : (
+                <>
+                  <label>
+                    Connection model
+                    <select
+                      aria-label="Connection model"
+                      value={model.id}
+                      onChange={(e) => setModelId(e.target.value)}
+                    >
+                      {available.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} · {m.id}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {guide.group === "Agents & IDEs" && !model.tools && (
+                    <p className="console-guide-note">
+                      Agent tool use is disabled for this model. Your
+                      administrator must enable supported tools before agent
+                      tasks will work.
+                    </p>
+                  )}
+                  <div className="console-guide-controls">
+                    <div role="group" aria-label="Operating system">
                       <button
-                        disabled={busy}
-                        onClick={async () => {
-                          if (credential) {
-                            setCredential("");
-                            return;
-                          }
-                          setBusy(true);
-                          setError("");
-                          try {
-                            const r = await fetch(
-                              `/api/share/${shareToken}/reveal`,
-                              { cache: "no-store" },
-                            );
-                            if (!r.ok)
-                              throw new Error(
-                                "Could not load your key. Check that this dashboard link is still active.",
-                              );
-                            setCredential((await r.json()).apiKey);
-                          } catch (e) {
-                            setError((e as Error).message);
-                          } finally {
-                            setBusy(false);
-                          }
-                        }}
+                        aria-pressed={os === "unix"}
+                        onClick={() => setOs("unix")}
                       >
-                        {busy
-                          ? "Loading…"
-                          : credential
-                            ? "Hide key in examples"
-                            : "Use my key in examples"}
+                        macOS / Linux
+                      </button>
+                      <button
+                        aria-pressed={os === "windows"}
+                        onClick={() => setOs("windows")}
+                      >
+                        PowerShell
                       </button>
                     </div>
-                    {error && <p role="alert">{error}</p>}
-                    <p>
-                      Merge configuration examples into your existing settings.{" "}
-                      {credential
-                        ? "Examples now contain your private Somiti key. Keep copied files private."
-                        : "Replace YOUR_SOMITI_API_KEY with your key, or use the button above."}
-                    </p>
-                    <div className="console-guide-fields">
-                      {content?.fields.map((f) => (
-                        <div key={f.label}>
-                          <label>{f.label}</label>
-                          <CopyValue value={f.value} />
-                        </div>
-                      ))}
-                    </div>
-                    {content?.snippets.map((s) => (
-                      <div className="console-guide-snippet" key={s.title}>
-                        <h3>{s.title}</h3>
-                        <CopyValue value={s.code} />
+                    <button
+                      disabled={busy}
+                      onClick={async () => {
+                        if (credential) {
+                          setCredential("");
+                          return;
+                        }
+                        setBusy(true);
+                        setError("");
+                        try {
+                          const r = await fetch(
+                            `/api/share/${shareToken}/reveal`,
+                            { cache: "no-store" },
+                          );
+                          if (!r.ok)
+                            throw new Error(
+                              "Could not load your key. Check that this dashboard link is still active.",
+                            );
+                          setCredential((await r.json()).apiKey);
+                        } catch (e) {
+                          setError((e as Error).message);
+                        } finally {
+                          setBusy(false);
+                        }
+                      }}
+                    >
+                      {busy
+                        ? "Loading…"
+                        : credential
+                          ? "Hide key in examples"
+                          : "Use my key in examples"}
+                    </button>
+                  </div>
+                  {error && <p role="alert">{error}</p>}
+                  <p>
+                    Merge configuration examples into your existing settings.{" "}
+                    {credential
+                      ? "Examples now contain your private Somiti key. Keep copied files private."
+                      : "Replace YOUR_SOMITI_API_KEY with your key, or use the button above."}
+                  </p>
+                  <div className="console-guide-fields">
+                    {content?.fields.map((f) => (
+                      <div key={f.label}>
+                        <label>{f.label}</label>
+                        <CopyValue value={f.value} />
                       </div>
                     ))}
-                  </>
-                )}
-              </>
-            )
+                  </div>
+                  {content?.snippets.map((s) => (
+                    <div className="console-guide-snippet" key={s.title}>
+                      <h3>{s.title}</h3>
+                      <CopyValue value={s.code} />
+                    </div>
+                  ))}
+                </>
+              )}
+            </>
           )}
           {guide.id === "cursor" && (
             <aside className="console-guide-note">

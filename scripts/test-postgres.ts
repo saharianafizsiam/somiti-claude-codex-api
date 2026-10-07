@@ -571,12 +571,24 @@ try {
           () => document.documentElement.scrollWidth <= window.innerWidth,
         ),
       );
-      await page.getByRole("navigation",{name:"Dashboard sections"}).getByRole("button",{name:"Connect",exact:true}).click();
-      const v1Clients=page.getByRole("navigation",{name:"Connection clients"});
-      assert.equal(await v1Clients.getByRole("button").count(),3);
-      await v1Clients.getByRole("button",{name:"Codex CLI",exact:true}).click();
-      await page.getByText("Not supported yet: this client requires /responses.").waitFor();
-      await page.getByRole("navigation",{name:"Dashboard sections"}).getByRole("button",{name:"Overview",exact:true}).click();
+      await page
+        .getByRole("navigation", { name: "Dashboard sections" })
+        .getByRole("button", { name: "Connect", exact: true })
+        .click();
+      const v1Clients = page.getByRole("navigation", {
+        name: "Connection clients",
+      });
+      assert.equal(await v1Clients.getByRole("button").count(), 38);
+      await v1Clients
+        .getByRole("button", { name: "Codex CLI", exact: true })
+        .click();
+      await page
+        .getByRole("heading", { name: "Codex CLI", exact: true })
+        .waitFor();
+      await page
+        .getByRole("navigation", { name: "Dashboard sections" })
+        .getByRole("button", { name: "Overview", exact: true })
+        .click();
       await database
         .update(schema.apiKeys)
         .set({ upstreamProvider: "claude-n-codex" })
@@ -634,9 +646,7 @@ try {
       await clients
         .getByRole("button", { name: "Codex CLI", exact: true })
         .click();
-      await page
-        .getByText("Not supported yet: this client requires /responses.")
-        .waitFor();
+      await page.getByText("~/.codex/config.toml", { exact: true }).waitFor();
       await page.getByLabel("Search clients").fill("");
       await clients
         .getByRole("button", { name: "Claude Code", exact: true })
@@ -683,10 +693,15 @@ try {
         path: ".tmp/screenshots/clients-desktop.png",
         fullPage: true,
       });
-      for (const path of ["/v2/v1/messages", "/v2/v1/models", "/v1/v1/messages", "/v1/v1/models"]) {
+      for (const path of [
+        "/v2/v1/messages",
+        "/v2/v1/models",
+        "/v1/v1/messages",
+        "/v1/v1/models",
+      ]) {
         const r = await fetch(
           `http://localhost:3100${path}`,
-          path.endsWith("messages")
+          !path.endsWith("models")
             ? {
                 method: "POST",
                 headers: { "content-type": "application/json" },

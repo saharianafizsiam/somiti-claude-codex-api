@@ -38,7 +38,7 @@ export const clientGuides: ClientGuide[] = [
       "Merge the env block below into ~/.claude/settings.json (Windows: %USERPROFILE%\\.claude\\settings.json).",
       "Restart Claude Code or its IDE extension, then start a new session with the selected model.",
     ],
-    "Agent tools must be enabled for this model. Token counting and some advanced gateway features are not supported.",
+    "Agent tools must be enabled for this model. Use a new session after changing provider settings.",
   ),
   entry("roo-code", "Roo Code / Cline / Kilo", agent, "anthropic", [
     "Open the extension settings and select the Anthropic provider.",
@@ -80,8 +80,9 @@ export const clientGuides: ClientGuide[] = [
     "Run the supplied aider command in your project folder.",
   ]),
   entry("codex", "Codex CLI", agent, "responses", [
-    "Codex CLI requires the Responses API.",
-    "Somiti currently exposes chat completions and messages only. Use another compatible client until Responses support is implemented.",
+    "Open ~/.codex/config.toml (Windows: %USERPROFILE%\\.codex\\config.toml). Merge the provider settings below without replacing unrelated settings.",
+    "Set SOMITI_API_KEY in your terminal using the command below. Restart Codex from that terminal and select the configured model.",
+    "Start a new session and send a short request. Check dashboard History to confirm it used your Somiti key.",
   ]),
   entry("zed", "Zed", agent, "anthropic", [
     "Merge the language_models block below into Zed settings.json.",
@@ -259,7 +260,7 @@ export const clientGuides: ClientGuide[] = [
   ]),
   entry("capabilities", "Capabilities & FAQ", api, "either", [
     "Messages, chat completions, streaming, and model discovery are routed according to each model's enabled capabilities.",
-    "Responses, token-counting, embeddings, audio, and image-generation endpoints are not implemented.",
+    "Responses, Messages, Chat Completions, token counting, and Responses compaction use your assigned route. Embeddings, audio, file uploads, and image-generation endpoints are not implemented.",
     "A model supporting one protocol is not automatically available through the other. Use the compatible model picker.",
     "Agent tools, reasoning, and image input must be enabled for the model by the administrator. No application has been generation-tested by these instructions.",
   ]),
@@ -271,7 +272,7 @@ export function compatibleModels(guide: ClientGuide, models: GuideModel[]) {
       : guide.protocol === "openai"
         ? m.openai
         : guide.protocol === "responses"
-          ? false
+          ? m.openai || m.anthropic
           : m.openai || m.anthropic,
   );
   if (guide.id === "cursor") {
@@ -304,7 +305,7 @@ export function connectionGuide(
           : `export ${k}='${v.replaceAll("'", "'\\''")}'`,
       )
       .join("\n");
-  const endpoint = `${base}/${a ? "messages" : "chat/completions"}`;
+  const endpoint = `${base}/${guide.protocol === "responses" ? "responses" : a ? "messages" : "chat/completions"}`;
   const snippets: { title: string; code: string }[] = [];
   const add = (title: string, value: unknown) =>
     snippets.push({
@@ -337,6 +338,16 @@ export function connectionGuide(
     ? { ANTHROPIC_BASE_URL: base, ANTHROPIC_API_KEY: key }
     : { OPENAI_API_BASE: base, OPENAI_API_KEY: key };
   switch (guide.id) {
+    case "codex":
+      add(
+        "~/.codex/config.toml",
+        `model_provider = "somiti"\nmodel = ${q(id)}\ndisable_response_storage = true\n\n[model_providers.somiti]\nname = "Somiti"\nbase_url = ${q(base)}\nenv_key = "SOMITI_API_KEY"\nwire_api = "responses"\nrequires_openai_auth = false\nsupports_websockets = false`,
+      );
+      add(
+        os === "windows" ? "PowerShell" : "macOS / Linux",
+        `${env({ SOMITI_API_KEY: key })}\ncodex`,
+      );
+      break;
     case "claude-code": {
       const values = {
         ANTHROPIC_BASE_URL: base,
