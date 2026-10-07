@@ -1,3 +1,4 @@
+import { importedCapabilities } from "../models/imported-capabilities";
 import { and, eq } from "drizzle-orm";
 import { db } from "../db";
 import {
@@ -73,7 +74,7 @@ export async function availableModels(key: ApiKey) {
       .select()
       .from(models)
       .orderBy(models.sortOrder, models.displayName)
-  ).filter(
+  ).map(importedCapabilities).filter(
     (m) =>
       (!key.upstreamProvider || m.provider === key.upstreamProvider) &&
       canAccess(

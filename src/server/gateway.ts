@@ -1,3 +1,4 @@
+import { importedCapabilities } from "@/lib/models/imported-capabilities";
 import { customerModelId } from "@/lib/models/customer-id";
 import { resolveClientAlias } from "@/lib/models/client-alias";
 import { readJson } from "@/lib/security/request-body";
@@ -79,7 +80,7 @@ export async function gateway(
     const allowedModels = await availableModels(key);
     const model =
       allowedModels.find(m => m.provider === selectedProvider && customerModelId(m) === body.model) ??
-      row?.model ??
+      (row?.model ? importedCapabilities(row.model) : undefined) ??
       resolveClientAlias(body.model, selectedProvider, allowedModels);
     if (!model)
       throw new AppError(
