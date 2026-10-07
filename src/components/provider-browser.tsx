@@ -33,7 +33,8 @@ export function ProviderDiscovery({ provider }: { provider: string }) {
       <h2>Upstream model catalog</h2>
       <p className="muted">
         Import and enable models for this account for matching keys. Previously
-        imported drafts are enabled too. Custom edits and archived models are
+        imported drafts are enabled too, and untouched API v2 Claude imports
+        receive chat-completions support. Custom edits and archived models are
         preserved.
       </p>
       {provider === "claude-n-codex" && (
@@ -90,7 +91,7 @@ export function ProviderDiscovery({ provider }: { provider: string }) {
                   source,
                 });
                 setMessage(
-                  `${result.added} models added and enabled; ${result.activated} previous drafts enabled. Matching keys can now use them. For custom-access keys, select the models in the key settings.`,
+                  `${result.added} models added and enabled; ${result.activated} existing models activated or repaired. Matching keys can now use them. For custom-access keys, select the models in the key settings.`,
                 );
                 router.refresh();
               } catch (e) {
@@ -123,4 +124,3 @@ export function ProviderDiscovery({ provider }: { provider: string }) {
     </section>
   );
 }
-

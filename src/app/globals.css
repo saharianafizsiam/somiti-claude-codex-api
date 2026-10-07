@@ -1824,6 +1824,312 @@ body {
     grid-template-columns: 1fr;
   }
 }
-.key-credit{white-space:nowrap;font-variant-numeric:tabular-nums}.key-credit strong{color:#24d3a0}.key-credit>span{color:#b8c7df}
-.account-spend-chart{display:flex;align-items:flex-end;gap:12px;overflow-x:auto;min-height:180px;padding-top:12px}.account-spend-chart>div{flex:1;min-width:45px;text-align:center}.account-spend-chart span{display:block;background:#d89509;border-radius:5px 5px 0 0;min-height:1px}.account-spend-chart small{font-size:10px;padding-top:5px}.console-models details{margin-top:8px;color:#adc0de;font-size:12px}.console-models summary{cursor:pointer}
-.model-costs .cost-tabs{display:inline-flex;gap:3px;background:#191f29;border-radius:10px;padding:4px;margin-bottom:18px}.model-costs .cost-tabs button{font-size:12px;border:0;padding:5px 10px;background:transparent}.model-costs .cost-tabs button[aria-pressed=true]{background:#090d14;color:#eef3fa}.cost-model-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}.cost-model{padding:12px 0;border-bottom:1px solid #272d39;min-width:0}.cost-model-title{display:flex;justify-content:space-between;gap:12px;align-items:center}.cost-model-title strong{font-size:14px;font-weight:600}.cost-badge{border-radius:16px;background:#1b212b;padding:3px 9px;color:#b8cceb;font:12px monospace;white-space:nowrap}.customer-console .cost-model .copy-value{border:0;background:transparent;margin:3px 0;padding:0;gap:8px}.customer-console .cost-model .copy-value code{font-size:12px}.customer-console .cost-model .copy-value button{border:0;background:transparent;padding:3px 6px}.cost-model details{font-size:11px;color:#a7b9d3;margin-top:3px}.cost-model summary{cursor:pointer}.cost-rate-grid{display:grid;gap:6px;padding:10px 0}.cost-rate-grid>div{display:flex;justify-content:space-between}.cost-footnote{border-top:1px dashed #272d39;margin-top:22px;padding-top:14px}.token-types{border:1px solid #272d39;border-radius:12px;overflow:hidden}.token-types>div{display:flex;justify-content:space-between;padding:8px 13px;font-size:12px;border-bottom:1px solid #272d39}.token-types>div:last-child{border:0}.token-types>div>span:first-child:before{content:'●';color:#f5a800;margin-right:9px}.token-types>div>span:last-child{font-family:monospace;color:#b8cceb}.token-cache{margin:14px 0 8px;font-size:12px}.token-cache strong{font-size:26px;color:#25d4a0}.model-costs progress{width:100%;height:6px;accent-color:#25d4a0;border:0;border-radius:10px;overflow:hidden}.model-costs progress::-webkit-progress-bar{background:#1b212b}.model-costs progress::-webkit-progress-value{background:#25d4a0}@media(max-width:640px){.cost-model-grid{grid-template-columns:1fr}.cost-model-title strong{font-size:13px}}
+.key-credit {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.key-credit strong {
+  color: #24d3a0;
+}
+.key-credit > span {
+  color: #b8c7df;
+}
+.account-spend-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  overflow-x: auto;
+  min-height: 180px;
+  padding-top: 12px;
+}
+.account-spend-chart > div {
+  flex: 1;
+  min-width: 45px;
+  text-align: center;
+}
+.account-spend-chart span {
+  display: block;
+  background: #d89509;
+  border-radius: 5px 5px 0 0;
+  min-height: 1px;
+}
+.account-spend-chart small {
+  font-size: 10px;
+  padding-top: 5px;
+}
+.console-models details {
+  margin-top: 8px;
+  color: #adc0de;
+  font-size: 12px;
+}
+.console-models summary {
+  cursor: pointer;
+}
+.model-costs .cost-tabs {
+  display: inline-flex;
+  gap: 3px;
+  background: #191f29;
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 18px;
+}
+.model-costs .cost-tabs button {
+  font-size: 12px;
+  border: 0;
+  padding: 5px 10px;
+  background: transparent;
+}
+.model-costs .cost-tabs button[aria-pressed="true"] {
+  background: #090d14;
+  color: #eef3fa;
+}
+.cost-model-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 24px;
+}
+.cost-model {
+  padding: 12px 0;
+  border-bottom: 1px solid #272d39;
+  min-width: 0;
+}
+.cost-model-title {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+.cost-model-title strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.cost-badge {
+  border-radius: 16px;
+  background: #1b212b;
+  padding: 3px 9px;
+  color: #b8cceb;
+  font: 12px monospace;
+  white-space: nowrap;
+}
+.customer-console .cost-model .copy-value {
+  border: 0;
+  background: transparent;
+  margin: 3px 0;
+  padding: 0;
+  gap: 8px;
+}
+.customer-console .cost-model .copy-value code {
+  font-size: 12px;
+}
+.customer-console .cost-model .copy-value button {
+  border: 0;
+  background: transparent;
+  padding: 3px 6px;
+}
+.cost-model details {
+  font-size: 11px;
+  color: #a7b9d3;
+  margin-top: 3px;
+}
+.cost-model summary {
+  cursor: pointer;
+}
+.cost-rate-grid {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
+}
+.cost-rate-grid > div {
+  display: flex;
+  justify-content: space-between;
+}
+.cost-footnote {
+  border-top: 1px dashed #272d39;
+  margin-top: 22px;
+  padding-top: 14px;
+}
+.token-types {
+  border: 1px solid #272d39;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.token-types > div {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 13px;
+  font-size: 12px;
+  border-bottom: 1px solid #272d39;
+}
+.token-types > div:last-child {
+  border: 0;
+}
+.token-types > div > span:first-child:before {
+  content: "●";
+  color: #f5a800;
+  margin-right: 9px;
+}
+.token-types > div > span:last-child {
+  font-family: monospace;
+  color: #b8cceb;
+}
+.token-cache {
+  margin: 14px 0 8px;
+  font-size: 12px;
+}
+.token-cache strong {
+  font-size: 26px;
+  color: #25d4a0;
+}
+.model-costs progress {
+  width: 100%;
+  height: 6px;
+  accent-color: #25d4a0;
+  border: 0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.model-costs progress::-webkit-progress-bar {
+  background: #1b212b;
+}
+.model-costs progress::-webkit-progress-value {
+  background: #25d4a0;
+}
+@media (max-width: 640px) {
+  .cost-model-grid {
+    grid-template-columns: 1fr;
+  }
+  .cost-model-title strong {
+    font-size: 13px;
+  }
+}
+/* Consistent glass surfaces with readable, high-contrast data. */
+:root {
+  --muted: #adbbce;
+}
+body {
+  background:
+    radial-gradient(ellipse at 8% 0%, #172e42 0, transparent 48%),
+    radial-gradient(ellipse at 95% 5%, #252440 0, transparent 45%), #0b111c;
+  background-attachment: fixed;
+}
+.sidebar,
+.console-sidebar,
+.topbar,
+.console-topbar {
+  background: rgba(12, 20, 33, 0.92);
+  backdrop-filter: blur(18px);
+}
+.panel,
+.metric,
+.login-card,
+.console-panel {
+  background: rgba(22, 31, 47, 0.88);
+  border-color: #ffffff24;
+  box-shadow:
+    inset 0 1px 0 #ffffff08,
+    0 12px 34px #00000012;
+}
+.customer-console {
+  background: transparent;
+}
+.console-guide-detail {
+  font-size: 14px;
+  line-height: 1.7;
+}
+.console-guide-detail ol {
+  list-style: decimal;
+  padding-left: 24px;
+}
+.console-guide-detail ol li {
+  padding-left: 7px;
+  margin-bottom: 14px;
+}
+.console-guide-detail li::marker {
+  color: #ffc45d;
+  font-weight: 600;
+}
+.console-guide-note ul {
+  list-style: disc;
+  padding-left: 20px;
+}
+.console-url-grid,
+.workspace-help-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.console-url-guide h3 {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.console-url-guide small {
+  display: block;
+  color: #afbed1;
+  margin-top: 8px;
+}
+.console-url-grid > div {
+  min-width: 0;
+}
+.console-url-guide .copy-value {
+  margin: 0;
+}
+.workspace-help {
+  border: 1px solid #ffffff24;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 24px;
+  background: #17283b99;
+}
+.workspace-help summary {
+  cursor: pointer;
+  color: #c9e5f6;
+  font-weight: 600;
+}
+.workspace-help-grid {
+  margin-top: 18px;
+}
+.workspace-help p {
+  color: #adbbce;
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+.table tbody tr:hover {
+  background: #ffffff05;
+}
+input::placeholder,
+textarea::placeholder {
+  color: #92a2b8;
+  opacity: 1;
+}
+:focus-visible {
+  outline: 2px solid #a8dce9;
+  outline-offset: 4px;
+}
+@media (max-width: 760px) {
+  .console-url-grid,
+  .workspace-help-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .sidebar,
+  .console-sidebar,
+  .topbar,
+  .console-topbar,
+  .panel,
+  .metric,
+  .login-card,
+  .console-panel {
+    backdrop-filter: none;
+    background: #162031;
+  }
+}
+
+.connection-steps {
+  list-style: decimal;
+  padding-left: 22px;
+  color: #bdcbe0;
+}
+.connection-steps li {
+  margin-bottom: 8px;
+}

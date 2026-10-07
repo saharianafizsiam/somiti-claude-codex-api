@@ -1,3 +1,4 @@
+import { readJson } from "@/lib/security/request-body";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { eq, or } from "drizzle-orm";
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
         password: z.string().min(1).max(200),
         totp: z.string().optional(),
       })
-      .parse(await req.json());
+      .parse(await readJson(req));
     const identifier = (data.username || data.email || "").toLowerCase();
     if (!identifier)
       throw new AppError("invalid_request", "Username is required.");

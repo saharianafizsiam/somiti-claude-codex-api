@@ -219,6 +219,67 @@ try {
         })
         .where(eq(schema.models.id, catalogModel.id));
   }
+  for (const headers of [
+    { origin: "https://untrusted.example", cookie },
+    { origin: process.env.APP_URL },
+  ]) {
+    const denied = await fetch(
+      "http://localhost:3100/api/admin/provider.import",
+      {
+        method: "POST",
+        headers: { ...headers, "content-type": "application/json" } as Record<
+          string,
+          string
+        >,
+        body: JSON.stringify({
+          provider: "claude-n-codex",
+          family: "CLAUDE",
+          source: "saved",
+        }),
+      },
+    );
+    assert.ok([401, 403].includes(denied.status));
+  }
+  const importV2 = () =>
+    fetch("http://localhost:3100/api/admin/provider.import", {
+      method: "POST",
+      headers: {
+        cookie,
+        origin: process.env.APP_URL!,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        provider: "claude-n-codex",
+        family: "CLAUDE",
+        source: "saved",
+      }),
+    });
+  assert.equal((await importV2()).status, 200);
+  await database
+    .update(schema.models)
+    .set({ supportsOpenaiEndpoint: false })
+    .where(eq(schema.models.publicModelId, "v2/sonnet-5"));
+  await database
+    .update(schema.models)
+    .set({
+      supportsOpenaiEndpoint: false,
+      description: "Configured by administrator.",
+    })
+    .where(eq(schema.models.publicModelId, "v2/opus-5"));
+  assert.equal((await importV2()).status, 200);
+  const [repaired] = await database
+    .select()
+    .from(schema.models)
+    .where(eq(schema.models.publicModelId, "v2/sonnet-5"));
+  const [custom] = await database
+    .select()
+    .from(schema.models)
+    .where(eq(schema.models.publicModelId, "v2/opus-5"));
+  assert.equal(repaired.supportsOpenaiEndpoint, true);
+  assert.equal(custom.supportsOpenaiEndpoint, false);
+  console.log(
+    "PASS: catalog repairs untouched v2 defaults, preserves explicit restrictions, and rejects unauthorized/cross-origin changes.",
+  );
   for (const path of [
     "/dashboard",
     "/dashboard/keys",
@@ -248,7 +309,11 @@ try {
     headers: { authorization: `Bearer ${credential}` },
   });
   assert.equal(secondList.status, 200);
-  assert.deepEqual((await secondList.json()).data, []);
+  assert.ok(
+    (await secondList.json()).data.every((m: { id: string }) =>
+      m.id.startsWith("v2/"),
+    ),
+  );
   const wrongProvider = await fetch(
     "http://localhost:3100/v2/chat/completions",
     {
@@ -496,11 +561,20 @@ try {
         .set({ provider: "claude-n-codex", supportsAnthropicEndpoint: true })
         .where(eq(schema.models.id, model.id));
       await page.reload();
-      await page.getByRole("heading",{name:"What a request costs"}).waitFor();
-      await page.getByRole("button",{name:"Token types",exact:true}).click();
-      await page.getByText("Account totals over the last 30 days · UTC").waitFor();
-      await page.getByRole("group",{name:"Cost view"}).getByRole("button",{name:"Models",exact:true}).click();
-      assert.equal(page.url(),stableUrl);
+      await page
+        .getByRole("heading", { name: "What a request costs" })
+        .waitFor();
+      await page
+        .getByRole("button", { name: "Token types", exact: true })
+        .click();
+      await page
+        .getByText("Account totals over the last 30 days · UTC")
+        .waitFor();
+      await page
+        .getByRole("group", { name: "Cost view" })
+        .getByRole("button", { name: "Models", exact: true })
+        .click();
+      assert.equal(page.url(), stableUrl);
       await page
         .getByRole("navigation", { name: "Dashboard sections" })
         .getByRole("button", { name: "Connect", exact: true })
@@ -509,6 +583,28 @@ try {
         name: "Connection clients",
       });
       assert.equal(await clients.getByRole("button").count(), 38);
+      await clients
+        .getByRole("button", { name: "Cursor", exact: true })
+        .click();
+      await page
+        .getByText("Override OpenAI Base URL", { exact: true })
+        .waitFor();
+      await page
+        .getByRole("heading", { name: "Connection checks", exact: true })
+        .waitFor();
+      assert.ok(
+        !(
+          await page.getByLabel("Client connection instructions").innerText()
+        ).includes("No compatible model"),
+      );
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.screenshot({
+        path: ".tmp/screenshots/cursor-desktop.png",
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
+
       await page.getByLabel("Search clients").fill("codex");
       await clients
         .getByRole("button", { name: "Codex CLI", exact: true })

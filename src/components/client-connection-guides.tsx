@@ -39,169 +39,225 @@ export function ClientConnectionGuides({
     `${c.name} ${c.group}`.toLowerCase().includes(search.toLowerCase()),
   );
   return (
-    <div className="console-connect-grid console-client-guides">
-      <aside className="console-panel">
-        <div className="console-section-head">
-          <h2>Clients</h2>
-          <span>{clientGuides.length}</span>
+    <>
+      <section className="console-panel console-url-guide">
+        <h2>Choose the right connection URL</h2>
+        <p>Use your Somiti key with the exact model ID listed below.</p>
+        <div className="console-url-grid">
+          <div>
+            <h3>Anthropic / Claude provider</h3>
+            <CopyValue value={baseUrl} />
+            <small>The SDK adds /v1/messages automatically.</small>
+          </div>
+          <div>
+            <h3>OpenAI-compatible provider</h3>
+            <CopyValue value={baseUrl} />
+            <small>Keep /v2. The client adds /chat/completions.</small>
+          </div>
+          <div>
+            <h3>Full chat endpoint</h3>
+            <CopyValue value={`${baseUrl}/chat/completions`} />
+            <small>Only for fields asking for a complete endpoint.</small>
+          </div>
         </div>
-        <input
-          aria-label="Search clients"
-          placeholder="Search clients…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <nav aria-label="Connection clients">
-          {["Agents & IDEs", "Chat applications", "Automation & SDK"].map(
-            (group) => (
-              <div key={group}>
-                {matches.some((c) => c.group === group) && <h3>{group}</h3>}
-                {matches
-                  .filter((c) => c.group === group)
-                  .map((c) => (
-                    <button
-                      type="button"
-                      key={c.id}
-                      aria-pressed={clientId === c.id}
-                      onClick={() => {
-                        setClientId(c.id);
-                        setModelId("");
-                      }}
-                    >
-                      {c.name}
-                    </button>
-                  ))}
-              </div>
-            ),
-          )}
-          {!matches.length && <p>No matching clients.</p>}
-        </nav>
-      </aside>
-      <section
-        className="console-panel console-guide-detail"
-        aria-label="Client connection instructions"
-      >
-        <h2>{guide.name}</h2>
-        <ol>
-          {guide.steps.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
-        {guide.note && <p className="console-guide-note">{guide.note}</p>}
-        {guide.protocol === "responses" ? (
-          <p role="status" className="console-guide-note">
-            Not supported yet: this client requires /responses.
-          </p>
-        ) : (
-          guide.id !== "capabilities" && (
-            <>
-              {!model ? (
-                <p role="status" className="console-guide-note">
-                  No compatible model is enabled for this key.{" "}
-                  {guide.protocol === "anthropic"
-                    ? "This client needs a messages model."
-                    : guide.protocol === "openai"
-                      ? "This client needs a chat-completions model."
-                      : "Ask your administrator to enable a model."}
-                </p>
-              ) : (
-                <>
-                  <label>
-                    Connection model
-                    <select
-                      aria-label="Connection model"
-                      value={model.id}
-                      onChange={(e) => setModelId(e.target.value)}
-                    >
-                      {available.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} · {m.id}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {guide.group === "Agents & IDEs" && !model.tools && (
-                    <p className="console-guide-note">
-                      Agent tool use is disabled for this model. Your
-                      administrator must enable supported tools before agent
-                      tasks will work.
-                    </p>
-                  )}
-                  <div className="console-guide-controls">
-                    <div role="group" aria-label="Operating system">
+      </section>
+      <div className="console-connect-grid console-client-guides">
+        <aside className="console-panel">
+          <div className="console-section-head">
+            <h2>Clients</h2>
+            <span>{clientGuides.length}</span>
+          </div>
+          <input
+            aria-label="Search clients"
+            placeholder="Search clients…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <nav aria-label="Connection clients">
+            {["Agents & IDEs", "Chat applications", "Automation & SDK"].map(
+              (group) => (
+                <div key={group}>
+                  {matches.some((c) => c.group === group) && <h3>{group}</h3>}
+                  {matches
+                    .filter((c) => c.group === group)
+                    .map((c) => (
                       <button
-                        aria-pressed={os === "unix"}
-                        onClick={() => setOs("unix")}
+                        type="button"
+                        key={c.id}
+                        aria-pressed={clientId === c.id}
+                        onClick={() => {
+                          setClientId(c.id);
+                          setModelId("");
+                        }}
                       >
-                        macOS / Linux
+                        {c.name}
                       </button>
-                      <button
-                        aria-pressed={os === "windows"}
-                        onClick={() => setOs("windows")}
+                    ))}
+                </div>
+              ),
+            )}
+            {!matches.length && <p>No matching clients.</p>}
+          </nav>
+        </aside>
+        <section
+          className="console-panel console-guide-detail"
+          aria-label="Client connection instructions"
+        >
+          <h2>{guide.name}</h2>
+          <ol>
+            {guide.steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+          {guide.note && <p className="console-guide-note">{guide.note}</p>}
+          {guide.protocol === "responses" ? (
+            <p role="status" className="console-guide-note">
+              Not supported yet: this client requires /responses.
+            </p>
+          ) : (
+            guide.id !== "capabilities" && (
+              <>
+                {!model ? (
+                  <p role="status" className="console-guide-note">
+                    No compatible model is enabled for this key. Ask your
+                    administrator to refresh the API v2 catalog in Models, or
+                    enable Chat Completions for a supported model.{" "}
+                    {guide.protocol === "anthropic"
+                      ? "This client needs a messages model."
+                      : guide.protocol === "openai"
+                        ? "This client needs a chat-completions model."
+                        : "Ask your administrator to enable a model."}
+                  </p>
+                ) : (
+                  <>
+                    <label>
+                      Connection model
+                      <select
+                        aria-label="Connection model"
+                        value={model.id}
+                        onChange={(e) => setModelId(e.target.value)}
                       >
-                        PowerShell
+                        {available.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.name} · {m.id}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {guide.group === "Agents & IDEs" && !model.tools && (
+                      <p className="console-guide-note">
+                        Agent tool use is disabled for this model. Your
+                        administrator must enable supported tools before agent
+                        tasks will work.
+                      </p>
+                    )}
+                    <div className="console-guide-controls">
+                      <div role="group" aria-label="Operating system">
+                        <button
+                          aria-pressed={os === "unix"}
+                          onClick={() => setOs("unix")}
+                        >
+                          macOS / Linux
+                        </button>
+                        <button
+                          aria-pressed={os === "windows"}
+                          onClick={() => setOs("windows")}
+                        >
+                          PowerShell
+                        </button>
+                      </div>
+                      <button
+                        disabled={busy}
+                        onClick={async () => {
+                          if (credential) {
+                            setCredential("");
+                            return;
+                          }
+                          setBusy(true);
+                          setError("");
+                          try {
+                            const r = await fetch(
+                              `/api/share/${shareToken}/reveal`,
+                              { cache: "no-store" },
+                            );
+                            if (!r.ok)
+                              throw new Error(
+                                "Could not load your key. Check that this dashboard link is still active.",
+                              );
+                            setCredential((await r.json()).apiKey);
+                          } catch (e) {
+                            setError((e as Error).message);
+                          } finally {
+                            setBusy(false);
+                          }
+                        }}
+                      >
+                        {busy
+                          ? "Loading…"
+                          : credential
+                            ? "Hide key in examples"
+                            : "Use my key in examples"}
                       </button>
                     </div>
-                    <button
-                      disabled={busy}
-                      onClick={async () => {
-                        if (credential) {
-                          setCredential("");
-                          return;
-                        }
-                        setBusy(true);
-                        setError("");
-                        try {
-                          const r = await fetch(
-                            `/api/share/${shareToken}/reveal`,
-                            { cache: "no-store" },
-                          );
-                          if (!r.ok)
-                            throw new Error(
-                              "Could not load your key. Check that this dashboard link is still active.",
-                            );
-                          setCredential((await r.json()).apiKey);
-                        } catch (e) {
-                          setError((e as Error).message);
-                        } finally {
-                          setBusy(false);
-                        }
-                      }}
-                    >
-                      {busy
-                        ? "Loading…"
-                        : credential
-                          ? "Hide key in examples"
-                          : "Use my key in examples"}
-                    </button>
-                  </div>
-                  {error && <p role="alert">{error}</p>}
-                  <p>
-                    Merge configuration examples into your existing settings.{" "}
-                    {credential
-                      ? "Examples now contain your private Somiti key. Keep copied files private."
-                      : "Replace YOUR_SOMITI_API_KEY with your key, or use the button above."}
-                  </p>
-                  <div className="console-guide-fields">
-                    {content?.fields.map((f) => (
-                      <div key={f.label}>
-                        <label>{f.label}</label>
-                        <CopyValue value={f.value} />
+                    {error && <p role="alert">{error}</p>}
+                    <p>
+                      Merge configuration examples into your existing settings.{" "}
+                      {credential
+                        ? "Examples now contain your private Somiti key. Keep copied files private."
+                        : "Replace YOUR_SOMITI_API_KEY with your key, or use the button above."}
+                    </p>
+                    <div className="console-guide-fields">
+                      {content?.fields.map((f) => (
+                        <div key={f.label}>
+                          <label>{f.label}</label>
+                          <CopyValue value={f.value} />
+                        </div>
+                      ))}
+                    </div>
+                    {content?.snippets.map((s) => (
+                      <div className="console-guide-snippet" key={s.title}>
+                        <h3>{s.title}</h3>
+                        <CopyValue value={s.code} />
                       </div>
                     ))}
-                  </div>
-                  {content?.snippets.map((s) => (
-                    <div className="console-guide-snippet" key={s.title}>
-                      <h3>{s.title}</h3>
-                      <CopyValue value={s.code} />
-                    </div>
-                  ))}
-                </>
-              )}
-            </>
-          )
-        )}
-      </section>
-    </div>
+                  </>
+                )}
+              </>
+            )
+          )}
+          {guide.id === "cursor" && (
+            <aside className="console-guide-note">
+              <h3>Connection checks</h3>
+              <ul>
+                <li>
+                  No new request in History? Check that both the key and base
+                  URL override are enabled, then select the custom model in a
+                  new chat.
+                </li>
+                <li>
+                  &ldquo;Out of usage&rdquo; or &ldquo;model already available&rdquo;? You may have
+                  selected a built-in model. Use the neutral custom model ID
+                  from the fields above.
+                </li>
+                <li>
+                  Auto, Tab completion, and some Agent features may use Cursor&apos;s
+                  services and limits. Requests and your key pass through
+                  Cursor&apos;s servers.
+                </li>
+                <li>
+                  The override affects other OpenAI models too. Disable it when
+                  returning to models covered by your Cursor subscription.
+                </li>
+                <li>
+                  No Save or Verify button? Test with a new chat. If chat works
+                  but Agent does not, check model tool support and the client&apos;s
+                  custom-provider limitations.
+                </li>
+              </ul>
+            </aside>
+          )}
+        </section>
+      </div>
+    </>
   );
 }

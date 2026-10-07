@@ -44,10 +44,11 @@ export function Shell({
       <aside className="sidebar">
         <Brand name={appName} />
         <div className="workspace">Your workspace</div>
-        <nav className="nav">
+        <nav className="nav" aria-label="Workspace navigation">
           {nav.map(([label, path, Icon]) => (
             <Link
               key={path}
+              aria-current={section === path ? "page" : undefined}
               className={section === path ? "active" : ""}
               href={`/dashboard${path ? `/${path}` : ""}`}
             >
@@ -80,7 +81,35 @@ export function Shell({
             <Logout />
           </div>
         </header>
-        <main className="content">{children}</main>
+        <main className="content">
+          <details className="workspace-help">
+            <summary>How to use this workspace</summary>
+            <div className="workspace-help-grid">
+              <div>
+                <strong>1. Prepare models</strong>
+                <p>
+                  Open Models to import the catalog and check supported
+                  endpoints before giving access.
+                </p>
+              </div>
+              <div>
+                <strong>2. Create customer access</strong>
+                <p>
+                  Create one key for API v1 or API v2, attach its account
+                  credential, and choose allowed models.
+                </p>
+              </div>
+              <div>
+                <strong>3. Share and monitor</strong>
+                <p>
+                  Share the private customer dashboard. Credit comes from its
+                  account; request logs help diagnose calls through Somiti.
+                </p>
+              </div>
+            </div>
+          </details>
+          {children}
+        </main>
       </div>
     </div>
   );

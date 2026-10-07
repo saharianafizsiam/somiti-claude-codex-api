@@ -18,7 +18,8 @@ export function importedModel(
     displayName: row.name,
     enabled: true,
     visible: true,
-    supportsOpenaiEndpoint: family === "OPENAI",
+    supportsOpenaiEndpoint:
+      family === "OPENAI" || provider === "claude-n-codex",
     supportsAnthropicEndpoint: family === "CLAUDE",
     supportsStreaming: true,
     description:

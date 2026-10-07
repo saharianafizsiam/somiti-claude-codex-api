@@ -51,11 +51,12 @@ export const clientGuides: ClientGuide[] = [
     agent,
     "openai",
     [
-      "Open Settings → Models and configure an OpenAI API key.",
-      "Enable Override OpenAI Base URL and enter the URL below. Add the model ID manually.",
-      "Select that model in chat.",
+      "Open Cursor Settings → Models → API Keys. Paste your Somiti key into OpenAI API Key, enable it, and save if a Save button appears.",
+      "Enable Override OpenAI Base URL and paste the exact base URL below. Keep /v2; do not replace it with /v1 or append /chat/completions.",
+      "In Add Custom Model, paste the exact model ID below. Prefer a neutral alias such as v2/sonnet-5 instead of a claude- or anthropic-named model.",
+      "Start a new chat and explicitly select your custom model instead of Auto. Send a short message, then check History for a new request.",
     ],
-    "This configures compatible chat requests; subscription features and autocomplete may use separate services.",
+    "Use the OpenAI settings for this connection, including Claude models. Cursor's Anthropic settings do not provide this custom base URL setup.",
   ),
   entry(
     "copilot",
@@ -264,7 +265,7 @@ export const clientGuides: ClientGuide[] = [
   ]),
 ];
 export function compatibleModels(guide: ClientGuide, models: GuideModel[]) {
-  return models.filter((m) =>
+  const compatible = models.filter((m) =>
     guide.protocol === "anthropic"
       ? m.anthropic
       : guide.protocol === "openai"
@@ -273,6 +274,13 @@ export function compatibleModels(guide: ClientGuide, models: GuideModel[]) {
           ? false
           : m.openai || m.anthropic,
   );
+  if (guide.id === "cursor") {
+    const neutral = compatible.filter(
+      (m) => !/(^|\/)(claude-|anthropic-)/i.test(m.id),
+    );
+    return neutral.length ? neutral : compatible;
+  }
+  return compatible;
 }
 export function connectionGuide(
   guide: ClientGuide,
@@ -311,7 +319,7 @@ export function connectionGuide(
         : "OpenAI-compatible / Chat Completions",
     },
     {
-      label: "Base URL",
+      label: guide.id === "cursor" ? "Override OpenAI Base URL" : "Base URL",
       value:
         guide.id === "typingmind"
           ? endpoint
@@ -319,8 +327,11 @@ export function connectionGuide(
             ? `${base}/v1`
             : base,
     },
-    { label: "API key", value: key },
-    { label: "Model ID", value: id },
+    { label: guide.id === "cursor" ? "OpenAI API Key" : "API key", value: key },
+    {
+      label: guide.id === "cursor" ? "Custom model ID" : "Model ID",
+      value: id,
+    },
   ];
   const vars: Record<string, string> = a
     ? { ANTHROPIC_BASE_URL: base, ANTHROPIC_API_KEY: key }

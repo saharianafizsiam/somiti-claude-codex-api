@@ -74,8 +74,17 @@ export function ActionButton({
         <DialogContent>
           <DialogTitle>Confirm action</DialogTitle>
           <DialogDescription>
-            Apply this change? Regenerated credentials and links immediately
-            replace the previous secret.
+            {action === "key.rotate"
+              ? "Replace this API key? Applications using the old key will stop working. Update each client with the new key afterward."
+              : action === "key.archive"
+                ? "Delete this customer key? API access and its private dashboard will stop working. Existing request records are retained."
+                : action === "key.unshare"
+                  ? "Disable this private dashboard link? The customer will no longer be able to open it."
+                  : action === "key.share"
+                    ? "Create a new private dashboard link? Any previous link will stop working. Share the new link only with this customer."
+                    : action === "model.archive"
+                      ? "Archive this model? Customers will no longer be able to send requests to it. Existing request records are retained."
+                      : "Apply this change to the selected item?"}
           </DialogDescription>
           {message && (
             <pre className="result" role="status">

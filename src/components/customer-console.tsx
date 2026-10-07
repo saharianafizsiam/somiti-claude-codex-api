@@ -552,6 +552,20 @@ export function CustomerConsole(p: Props) {
                   </aside>
                   <section className="console-panel">
                     <h2>Your first request</h2>
+                    <ol className="connection-steps">
+                      <li>
+                        Select an enabled model below. The example uses its
+                        supported endpoint.
+                      </li>
+                      <li>
+                        Reveal your Somiti key above and replace YOUR_API_KEY in
+                        the example.
+                      </li>
+                      <li>
+                        Run the example, then open History to confirm the
+                        result.
+                      </li>
+                    </ol>
                     <label>
                       Model
                       <select
@@ -603,10 +617,10 @@ export function CustomerConsole(p: Props) {
                 </p>
                 <h3>Quota and usage</h3>
                 <p>
-                  Your balance is the actual remaining account quota. Dashboard
-                  usage covers requests sent through Somiti. Per-request charges
-                  and cache statistics are shown when provided by the account
-                  API.
+                  Your balance is the actual remaining account quota. API v1
+                  history covers requests sent through Somiti. API v2 also shows
+                  account history when available. Per-request charges and cache
+                  statistics are shown when provided by the account API.
                 </p>
                 <h3>Errors and retries</h3>
                 <p>

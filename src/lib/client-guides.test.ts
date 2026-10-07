@@ -68,3 +68,31 @@ describe("v2 client guides", () => {
     expect(result.snippets[1].code).toContain("$env:ANTHROPIC_MODEL");
   });
 });
+
+it("Cursor prefers a neutral allowed alias and uses the Somiti route", () => {
+  const guide = clientGuides.find((g) => g.id === "cursor")!;
+  const alias = {
+    id: "v2/sonnet-5",
+    name: "Sonnet",
+    openai: true,
+    anthropic: true,
+  };
+  expect(
+    compatibleModels(guide, [{ ...alias, id: "v2/claude-sonnet-5" }, alias]),
+  ).toEqual([alias]);
+  const result = connectionGuide(
+    guide,
+    alias,
+    "https://api.somiti.page/v2",
+    "YOUR_SOMITI_API_KEY",
+    "unix",
+  );
+  expect(result.fields).toContainEqual({
+    label: "Override OpenAI Base URL",
+    value: "https://api.somiti.page/v2",
+  });
+  expect(result.fields).toContainEqual({
+    label: "Custom model ID",
+    value: alias.id,
+  });
+});

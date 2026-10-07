@@ -128,6 +128,24 @@ export async function adminAction(action: string, input: unknown) {
               .where(eq(models.id, draft.id));
             activated++;
           }
+          // Repair only untouched defaults from the original v2 catalog importer.
+          if (
+            !draft.archivedAt &&
+            draft.enabled &&
+            draft.visible &&
+            draft.provider === "claude-n-codex" &&
+            draft.family === "CLAUDE" &&
+            draft.supportsAnthropicEndpoint &&
+            !draft.supportsOpenaiEndpoint &&
+            draft.description ===
+              "Imported from API catalog. Uses the account family's standard endpoint; generation availability depends on the assigned key."
+          ) {
+            await tx
+              .update(models)
+              .set({ supportsOpenaiEndpoint: true, updatedAt: new Date() })
+              .where(eq(models.id, draft.id));
+            activated++;
+          }
           continue;
         }
         const inserted = await tx
@@ -380,6 +398,12 @@ export async function adminAction(action: string, input: unknown) {
       .extend({ id: z.string().uuid().optional() })
       .parse(input);
     const { id, aliases, ...values } = data;
+    // An explicit edit owns its capabilities; later catalog refreshes must not reset them.
+    if (
+      values.description ===
+      "Imported from API catalog. Uses the account family's standard endpoint; generation availability depends on the assigned key."
+    )
+      values.description = "Configured by administrator.";
     return db().transaction(async (tx) => {
       // Serialize catalog edits so public IDs and aliases occupy one namespace.
       await tx.execute(

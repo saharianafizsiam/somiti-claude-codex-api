@@ -241,3 +241,13 @@ Customer v2 dashboards now fetch the assigned account's read-only requests, 30-d
 The customer view includes account success rate, median/p95 latency, cache hit rate, today's spending, a 14-day spending chart, request charges/cache tokens/TTFT, and API-returned model prices. Repeated display names are grouped with alternate IDs available to copy. If an account endpoint fails, the UI reports unavailable rather than inventing zero activity. Only validated public fields leave the server; raw errors, account keys, and provider metadata are discarded. No new environment variable or database migration is required.
 
 The v2 cost panel now uses compact two-column model rows with live input-price badges ($/M), expandable output/cache rates, and alternate model IDs. The Token types tab shows input, output, cache-read, and cache-write totals summed from the same full 30-day account statistics (UTC), plus the reported cache-hit rate. Missing categories remain unavailable. No price or token count is taken from a screenshot or hardcoded example.
+
+### Connection guide and interface update
+
+API v2 Claude catalog imports now enable both Messages and Chat Completions. After deploying, open **Models**, select **API v2 / Claude**, and click **Import & enable saved models** (or **Refresh & enable from API**). This also repairs the original untouched imported defaults that incorrectly disabled Chat Completions. Explicitly edited, archived, or disabled models retain their restrictions. Custom-access keys still require the administrator to select allowed models.
+
+Cursor instructions use the customer's Somiti base URL and an allowed neutral model alias where available. The guide includes numbered setup steps, copyable fields, and troubleshooting. Client integrations have not been generation-tested against paid upstream services; Responses remains unsupported.
+
+Admin, login, and customer layouts share restrained translucent surfaces, keyboard focus indicators, and responsive layouts. Admin workspace help explains the setup sequence, and destructive actions explain their actual effects. API v1 includes a step-by-step first-request guide.
+
+Login/admin JSON bodies are bounded to 64 KiB and inference bodies to 2 MB while streaming, even without Content-Length. Existing session, role, origin, key permission, and endpoint checks remain enforced. These protections and regression checks do not constitute a comprehensive penetration test.

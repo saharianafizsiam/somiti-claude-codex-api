@@ -1,3 +1,4 @@
+import { readJson } from "@/lib/security/request-body";
 import { eq, or } from "drizzle-orm";
 import { z } from "zod";
 import { after } from "next/server";
@@ -30,15 +31,7 @@ export async function gateway(
   const started = Date.now();
   try {
     const key = await authenticate(req);
-    const raw = await req.text();
-    if (Buffer.byteLength(raw) > 2_000_000)
-      throw new AppError("invalid_request", "Request body exceeds 2 MB.", 413);
-    let json: unknown;
-    try {
-      json = JSON.parse(raw);
-    } catch {
-      throw new AppError("invalid_request", "Invalid JSON.");
-    }
+    const json = await readJson(req, 2_000_000);
     const body = bodySchema.parse(json);
     const [row] = await db()
       .select({ model: models })

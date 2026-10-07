@@ -6,6 +6,8 @@ describe("catalog imports", () => {
     const a = importedModel("mwapi", "CLAUDE", row);
     const b = importedModel("claude-n-codex", "CLAUDE", row);
     expect(a.publicModelId).not.toBe(b.publicModelId);
+    expect(b.supportsOpenaiEndpoint).toBe(true);
+    expect(b.supportsAnthropicEndpoint).toBe(true);
     expect(a.upstreamModelId).toBe(row.id);
     expect(a.enabled).toBe(true);
     expect(a.supportsOpenaiEndpoint).toBe(false);
