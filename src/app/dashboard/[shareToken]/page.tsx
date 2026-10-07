@@ -1,4 +1,4 @@
-import { customerCatalog } from "@/lib/models/customer-id";
+import { customerCatalog, discoveryCatalog } from "@/lib/models/customer-id";
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { availableModels, sharedKey } from "@/lib/api-keys";
@@ -25,6 +25,6 @@ export default async function Customer({ params }: { params: Promise<{ shareToke
     status={key.expiresAt && key.expiresAt <= new Date() ? "EXPIRED" : key.status}
     baseUrl={`${apiUrl}/${key.upstreamProvider === "claude-n-codex" ? "v2" : "v1"}`}
     account={account} pricing={pricing} quota={quota} stats={{ requests: Number(stats.requests), errors: Number(stats.errors), today: Number(stats.today), latency: Number(stats.averageLatency), tokens: Number(stats.totalTokens) }}
-    models={catalog.map(m => ({ id: m.publicModelId, name: m.displayName, family: m.family, openai: m.supportsOpenaiEndpoint, anthropic: m.supportsAnthropicEndpoint, tools: m.supportsTools, streaming: m.supportsStreaming, contextWindow: m.contextWindow, maxOutputTokens: m.maxOutputTokens }))}
+    models={discoveryCatalog(catalog).map(m => ({ id: m.publicModelId, name: m.displayName, family: m.family, openai: m.supportsOpenaiEndpoint, anthropic: m.supportsAnthropicEndpoint, tools: m.supportsTools, streaming: m.supportsStreaming, contextWindow: m.contextWindow, maxOutputTokens: m.maxOutputTokens }))}
     logs={logs.map(l => ({ id: l.id, model: l.model, input: l.input, output: l.output, latency: l.latency, status: l.status, created: l.created.toISOString() }))} />;
 }

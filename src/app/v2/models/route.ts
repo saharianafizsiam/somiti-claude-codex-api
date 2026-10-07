@@ -1,4 +1,4 @@
-import { customerModelId } from "@/lib/models/customer-id";
+import { customerModelId, discoveryCatalog } from "@/lib/models/customer-id";
 import { authenticate, availableModels } from "@/lib/api-keys";
 import { errorResponse } from "@/lib/errors";
 export async function GET(req: Request) {
@@ -7,7 +7,7 @@ export async function GET(req: Request) {
     return Response.json(
       {
         object: "list",
-        data: (await availableModels(key))
+        data: discoveryCatalog(await availableModels(key))
           .filter((m) => m.provider === "claude-n-codex")
           .map((m) => ({
             id: customerModelId(m),
