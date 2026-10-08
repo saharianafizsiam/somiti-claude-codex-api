@@ -85,8 +85,8 @@ export const clientGuides: ClientGuide[] = [
     "Start a new session and send a short request. Check dashboard History to confirm it used your Somiti key.",
   ]),
   entry("zed", "Zed", agent, "anthropic", [
-    "Merge the language_models block below into Zed settings.json.",
-    "In the Agent panel, open model settings and save your Somiti key under Anthropic.",
+    "Cmd+, → Open Settings; add the language_models block below.",
+    "Agent Panel → Settings → Anthropic → API Key. Paste your Somiti key.",
     "Select the added model.",
   ]),
   entry(
@@ -95,14 +95,14 @@ export const clientGuides: ClientGuide[] = [
     agent,
     "either",
     [
-      "For OpenCode v1, merge the custom provider below into opencode.json.",
+      "Create ~/.config/opencode/opencode.json if it does not exist, then merge the configuration below.",
       "Restart OpenCode and select the somiti provider and model.",
     ],
-    "This example uses the v1 provider configuration schema; v2 installations use a different schema.",
+    "This configuration uses the provider schema shown below. Keep any other providers already in your configuration.",
   ),
   entry("jetbrains", "JetBrains AI Assistant", agent, "openai", [
-    "Open Settings → Tools → AI Assistant → Providers & API keys.",
-    "Add an OpenAI-compatible provider, fill in the fields below, and test the connection.",
+    "Settings → Tools → AI Assistant → Providers & API keys.",
+    "Choose OpenAI-compatible, fill in the fields, and click Test Connection.",
     "Select it for AI chat.",
   ]),
   entry("openhands", "OpenHands", agent, "either", [
@@ -115,12 +115,12 @@ export const clientGuides: ClientGuide[] = [
     "Choose Anthropic and use the exact model ID below.",
   ]),
   entry("crush", "Crush", agent, "anthropic", [
-    "Merge the provider below into crush.json.",
-    "Start Crush and select the Somiti provider and model.",
+    "Declare Somiti as a new provider in crush.json.",
+    "Use the new somiti provider ID; do not overwrite the built-in anthropic provider.",
   ]),
   entry("droid", "Droid (Factory)", agent, "either", [
     "Merge the customModels entry into ~/.factory/settings.json.",
-    "Restart Droid and select the new custom model.",
+    "Use settings.json with camelCase. Restart Droid and select the custom model; the legacy config.json does not interpolate environment variables.",
   ]),
   entry("openclaw", "OpenClaw", agent, "either", [
     "Merge the models.providers entry below into ~/.openclaw/openclaw.json.",
@@ -342,6 +342,11 @@ export function connectionGuide(
       add("chatLanguageModels.json", [{name: "Somiti", vendor: "customendpoint", apiKey: key, apiType: a ? "messages" : "chatCompletions", models: [{id, url: base}]}]);
       break;
     case "codex":
+      {
+        const quote = (v: string) => os === "windows" ? "'" + v.replaceAll("'", "''") + "'" : "'" + v.replaceAll("'", "'\\''") + "'";
+        const overrides = { model_provider: "somiti", "model_providers.somiti.name": "Somiti", "model_providers.somiti.base_url": base, "model_providers.somiti.env_key": "SOMITI_API_KEY", "model_providers.somiti.wire_api": "responses", "model_providers.somiti.requires_openai_auth": false, "model_providers.somiti.supports_websockets": false };
+        add(os === "windows" ? "Quick start · PowerShell (current session)" : "Quick start · macOS / Linux (current session)", env({SOMITI_API_KEY:key}) + "\ncodex --model " + quote(id) + Object.entries(overrides).map(([k,v]) => " -c " + quote(k + "=" + JSON.stringify(v))).join(""));
+      }
       add(
         "~/.codex/config.toml",
         `model_provider = "somiti"\nmodel = ${q(id)}\ndisable_response_storage = true\n\n[model_providers.somiti]\nname = "Somiti"\nbase_url = ${q(base)}\nenv_key = "SOMITI_API_KEY"\nwire_api = "responses"\nrequires_openai_auth = false\nsupports_websockets = false`,
@@ -376,6 +381,7 @@ export function connectionGuide(
       add("Terminal", `${env(a ? { ANTHROPIC_API_BASE: base, ANTHROPIC_API_KEY: key } : vars)}\naider --model ${protocol}/${id}`);
       break;
     case "goose":
+      add("~/.config/goose/config.yaml", `GOOSE_PROVIDER: anthropic\nGOOSE_MODEL: ${q(id)}`);
       add(
         "Terminal",
         `${env({ ANTHROPIC_HOST: base, ANTHROPIC_API_KEY: key, GOOSE_MODEL: id })}\ngoose configure`,
@@ -398,12 +404,13 @@ export function connectionGuide(
       });
       break;
     case "opencode":
-      add("opencode.json (v1)", {
+      add("~/.config/opencode/opencode.json", {
+        $schema: "https://opencode.ai/config.json",
         provider: {
           somiti: {
             npm: a ? "@ai-sdk/anthropic" : "@ai-sdk/openai-compatible",
             name: "Somiti",
-            options: { baseURL: base, apiKey: key },
+            options: { baseURL: a && base.endsWith("/v2") ? `${base}/v1` : base, apiKey: key },
             models: { [id]: { name: model.name } },
           },
         },
@@ -463,9 +470,10 @@ export function connectionGuide(
       });
       break;
     case "openhands":
+      add("Docker environment", `LLM_MODEL=${protocol}/${id}\nLLM_BASE_URL=${base}\nLLM_API_KEY=${key}`);
       fields[3] = { label: "Custom Model", value: `${protocol}/${id}` };
       add(
-        "Environment",
+        "Terminal environment",
         `${env({ LLM_MODEL: `${protocol}/${id}`, LLM_BASE_URL: base, LLM_API_KEY: key })}`,
       );
       break;
