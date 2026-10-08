@@ -128,3 +128,13 @@ it("v1 setup keeps customer credentials and models on the assigned route", () =>
   expect(config.provider.somiti.npm).toBe("@ai-sdk/anthropic");
   expect(config.model).toBe("somiti/v1/claude-test");
 });
+
+it("uses the supplied client-specific Anthropic settings", () => {
+ const model = {id:"claude-sonnet-5",name:"Sonnet 5",anthropic:true,openai:true};
+ const guide = (id: string) => connectionGuide(clientGuides.find(g=>g.id===id)!,model,"https://api.somiti.page/v2","customer-key","unix");
+ expect(guide("continue").snippets[0].code).toContain('apiBase: "https://api.somiti.page/v2/v1"');
+ expect(guide("aider").snippets[0].code).toContain("ANTHROPIC_API_BASE");
+ const config=JSON.parse(guide("copilot").snippets[0].code);
+ expect(config[0].apiType).toBe("messages");
+ expect(config[0].models[0].url).toBe("https://api.somiti.page/v2");
+});

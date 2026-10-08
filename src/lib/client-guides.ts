@@ -35,15 +35,15 @@ export const clientGuides: ClientGuide[] = [
     agent,
     "anthropic",
     [
-      "Merge the env block below into ~/.claude/settings.json (Windows: %USERPROFILE%\\.claude\\settings.json).",
+      "Works for the Claude Code CLI and the VS Code extension. Paste this into ~/.claude/settings.json and run claude.",
       "Restart Claude Code or its IDE extension, then start a new session with the selected model.",
     ],
     "Agent tools must be enabled for this model. Use a new session after changing provider settings.",
   ),
   entry("roo-code", "Roo Code / Cline / Kilo", agent, "anthropic", [
-    "Open the extension settings and select the Anthropic provider.",
-    "Turn on the custom base URL option. Enter the connection fields below and choose the exact model ID.",
-    "Save and start a new task.",
+    "Open the extension → Settings → Providers.",
+    "Choose API Provider: Anthropic and enable Use custom base URL.",
+    "Paste the URL, key, and model from the block below.",
   ]),
   entry(
     "cursor",
@@ -53,7 +53,7 @@ export const clientGuides: ClientGuide[] = [
     [
       "Open Cursor Settings → Models → API Keys. Paste your Somiti key into OpenAI API Key, enable it, and save if a Save button appears.",
       "Enable Override OpenAI Base URL and paste the exact base URL below. Keep /v2; do not replace it with /v1 or append /chat/completions.",
-      "In Add Custom Model, paste the exact model ID below. Prefer a neutral alias such as v2/sonnet-5 instead of a claude- or anthropic-named model.",
+      "In Add Custom Model, paste the exact model ID below. Prefer a neutral alias such as sonnet-5 instead of a claude- or anthropic-named model.",
       "Start a new chat and explicitly select your custom model instead of Auto. Send a short message, then check History for a new request.",
     ],
     "Use the OpenAI settings for this connection, including Claude models. Cursor's Anthropic settings do not provide this custom base URL setup.",
@@ -62,13 +62,13 @@ export const clientGuides: ClientGuide[] = [
     "copilot",
     "GitHub Copilot",
     agent,
-    "openai",
+    "either",
     [
-      "In VS Code, run Chat: Manage Language Models from the command palette.",
-      "Add a custom OpenAI-compatible endpoint using the fields below.",
+      "Open Command Palette → Chat: Manage Language Models → Add custom model.",
+      "Alternatively, add the configuration below to chatLanguageModels.json.",
       "Choose the added model in the chat model picker.",
     ],
-    "Requires a VS Code version with custom endpoint support. Organization policies may restrict custom models.",
+    "You must be signed in to GitHub Copilot; the Free plan is sufficient. On Business/Enterprise, organization policy may disable BYOK.",
   ),
   entry("continue", "Continue.dev", agent, "either", [
     "Open Continue's local config.yaml.",
@@ -293,7 +293,7 @@ export function connectionGuide(
   const base = baseUrl.replace(/\/$/, "");
   const a =
     guide.protocol === "anthropic" ||
-    (guide.protocol === "either" && model.anthropic && !model.openai);
+    (guide.protocol === "either" && model.anthropic);
   const protocol = a ? "anthropic" : "openai";
   const id = model.id;
   const q = (v: unknown) => JSON.stringify(v, null, 2);
@@ -338,6 +338,9 @@ export function connectionGuide(
     ? { ANTHROPIC_BASE_URL: base, ANTHROPIC_API_KEY: key }
     : { OPENAI_API_BASE: base, OPENAI_API_KEY: key };
   switch (guide.id) {
+    case "copilot":
+      add("chatLanguageModels.json", [{name: "Somiti", vendor: "customendpoint", apiKey: key, apiType: a ? "messages" : "chatCompletions", models: [{id, url: base}]}]);
+      break;
     case "codex":
       add(
         "~/.codex/config.toml",
@@ -353,9 +356,8 @@ export function connectionGuide(
         ANTHROPIC_BASE_URL: base,
         ANTHROPIC_AUTH_TOKEN: key,
         ANTHROPIC_MODEL: id,
-        ANTHROPIC_DEFAULT_SONNET_MODEL: id,
-        ANTHROPIC_DEFAULT_OPUS_MODEL: id,
-        ANTHROPIC_DEFAULT_HAIKU_MODEL: id,
+        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
+        CLAUDE_CODE_ATTRIBUTION_HEADER: "0",
       };
       add("~/.claude/settings.json", { env: values });
       add(
@@ -367,11 +369,11 @@ export function connectionGuide(
     case "continue":
       add(
         "config.yaml",
-        `name: Somiti\nversion: 1.0.0\nschema: v1\nmodels:\n  - name: Somiti\n    provider: ${protocol}\n    model: ${q(id)}\n    apiBase: ${q(base)}\n    apiKey: ${q(key)}\n    roles: [chat, edit, apply]`,
+        `name: Somiti\nversion: 1.0.0\nschema: v1\nmodels:\n  - name: Somiti\n    provider: ${protocol}\n    model: ${q(id)}\n    apiBase: ${q(a ? base + "/v1" : base)}\n    apiKey: ${q(key)}\n    roles: [chat, edit, apply]`,
       );
       break;
     case "aider":
-      add("Terminal", `${env(vars)}\naider --model ${protocol}/${id}`);
+      add("Terminal", `${env(a ? { ANTHROPIC_API_BASE: base, ANTHROPIC_API_KEY: key } : vars)}\naider --model ${protocol}/${id}`);
       break;
     case "goose":
       add(
@@ -544,6 +546,7 @@ export function connectionGuide(
       break;
     }
   }
+  if (guide.id === "roo-code") return {fields: [{label:"API Provider",value:"Anthropic"},{label:"Anthropic API Key",value:key},{label:"Custom base URL",value:base},{label:"Model",value:id}],snippets,endpoint,protocol};
   if (guide.id === "claude-desktop") return { fields: [{label: "Gateway base URL", value: base}, {label: "Gateway API key", value: key}, {label: "Gateway auth scheme", value: "x-api-key"}], snippets: [], endpoint, protocol };
   return { fields, snippets, endpoint, protocol };
 }

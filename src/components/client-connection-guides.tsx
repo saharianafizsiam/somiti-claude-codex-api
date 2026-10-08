@@ -118,7 +118,7 @@ export function ClientConnectionGuides({
           <h2>{guide.name}</h2>
           <ol>
             {guide.steps.map((step) => (
-              <li key={step}>{step}</li>
+              <li key={step}>{guide.id === "cursor" && step.startsWith("In Add Custom Model") && model?.id === "gpt-5.5" ? "Select Cursor’s built-in GPT-5.5 model: its ID is gpt-5.5. Do not add a second model with the same name." : step}</li>
             ))}
           </ol>
           {guide.note && <p className="console-guide-note">{guide.note}</p>}
