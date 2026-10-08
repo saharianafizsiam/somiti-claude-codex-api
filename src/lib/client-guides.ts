@@ -231,17 +231,18 @@ export const clientGuides: ClientGuide[] = [
     ],
   ),
   entry("n8n", "n8n", api, "either", [
-    "Add an Anthropic or OpenAI credential matching the selected protocol.",
+    "Credentials → New → Anthropic for a messages model, or OpenAI for a chat-completions model. Follow the Provider field below.",
     "Set its custom Base URL and key. If the credential has no URL override, use an HTTP Request node with the full endpoint below.",
-    "Choose the exact model ID in the model node.",
+    "Select this credential in Anthropic Chat Model or OpenAI Chat Model, then choose the exact model ID below.",
+    "For new Opus/Sonnet models, do not set Temperature and Top P together under Options.",
   ]),
   entry("litellm", "LiteLLM", api, "either", [
-    "Add the model entry below to your LiteLLM proxy configuration.",
+    "Connect Somiti to an existing LiteLLM gateway or the Python library using the examples below.",
     "Restart the proxy and send requests using the configured model_name.",
   ]),
   entry("dify", "Dify", api, "either", [
-    "Open Settings → Model Provider.",
-    "Configure Anthropic for messages or an OpenAI-API-compatible provider for chat completions.",
+    "Settings → Model Provider → Anthropic → Setup for an Anthropic model.",
+    "For a chat-completions model, use the OpenAI-API-compatible provider. Follow the Provider and API URL fields below.",
     "Enter the custom URL, API key, and exact model ID, then add it to your application.",
   ]),
   entry("flowise", "Flowise", api, "openai", [
@@ -250,15 +251,18 @@ export const clientGuides: ClientGuide[] = [
     "Connect the node to your flow and save.",
   ]),
   entry("sdk", "SDK", api, "either", [
-    "Install the SDK matching your selected protocol.",
+    "Examples for official SDKs, LangChain, and the Vercel AI SDK. Install the package imported by your chosen example.",
     "Run the Python or TypeScript example on your server. Keep the key outside public frontend code.",
+    "Official Anthropic SDKs add /v1/messages to the base URL. The Vercel Anthropic provider uses the explicit /v1 base shown in its example.",
   ]),
   entry("openai-compat", "OpenAI-compatible", api, "openai", [
     "Choose a client that supports a custom OpenAI-compatible base URL.",
-    "Enter the base URL, key, and model ID below. Use chat completions, not Responses.",
+    "Enter the base URL, key, and model ID below. Use /chat/completions with Authorization: Bearer authentication.",
+    "Verify with the cURL or PowerShell request below.",
   ]),
   entry("api", "API / curl", api, "either", [
     "Choose your operating system below.",
+    "For Anthropic Messages, use the full endpoint with x-api-key and anthropic-version headers. For Chat Completions, use Authorization: Bearer. The example selects the correct headers for your model.",
     "Copy the request into your terminal. It makes a real request and consumes account quota.",
   ]),
   entry("capabilities", "Capabilities & FAQ", api, "either", [
@@ -519,8 +523,15 @@ export function connectionGuide(
         "config.yaml",
         `model_list:\n  - model_name: ${q(id)}\n    litellm_params:\n      model: ${q(protocol + "/" + id)}\n      api_base: ${q(base)}\n      api_key: ${q(key)}`,
       );
+      add("Python · LiteLLM", `import litellm\n\nresponse = litellm.completion(\n    model=${q(protocol + "/" + id)},\n    api_base=${q(base)},\n    api_key=${q(key)},\n    messages=[{"role": "user", "content": "Hello"}],\n)\nprint(response)`);
       break;
     case "sdk":
+      add("Python · LangChain", a
+        ? `from langchain_anthropic import ChatAnthropic\n\nllm = ChatAnthropic(\n    model=${q(id)},\n    anthropic_api_url=${q(base)},\n    anthropic_api_key=${q(key)},\n)\nprint(llm.invoke("Hello"))`
+        : `from langchain_openai import ChatOpenAI\n\nllm = ChatOpenAI(\n    model=${q(id)},\n    base_url=${q(base)},\n    api_key=${q(key)},\n)\nprint(llm.invoke("Hello"))`);
+      add("TypeScript · Vercel AI SDK", a
+        ? `import { createAnthropic } from "@ai-sdk/anthropic";\nimport { generateText } from "ai";\n\nconst provider = createAnthropic({\n  baseURL: ${q(base + "/v1")},\n  apiKey: ${q(key)},\n});\nconst result = await generateText({model: provider(${q(id)}), prompt: "Hello"});\nconsole.log(result.text);`
+        : `import { createOpenAICompatible } from "@ai-sdk/openai-compatible";\nimport { generateText } from "ai";\n\nconst provider = createOpenAICompatible({\n  name: "somiti",\n  baseURL: ${q(base)},\n  apiKey: ${q(key)},\n});\nconst result = await generateText({model: provider(${q(id)}), prompt: "Hello"});\nconsole.log(result.text);`);
       add(
         "Python",
         a
@@ -569,6 +580,9 @@ export function connectionGuide(
   if (guide.id === "roo-code") return {fields: [{label:"API Provider",value:"Anthropic"},{label:"Anthropic API Key",value:key},{label:"Custom base URL",value:base},{label:"Model",value:id}],snippets,endpoint,protocol};
   if (guide.id === "claude-desktop") return { fields: [{label: "Gateway base URL", value: base}, {label: "Gateway API key", value: key}, {label: "Gateway auth scheme", value: "x-api-key"}], snippets: [], endpoint, protocol };
   const clientFields: Record<string, {label: string; value: string}[]> = {
+    n8n: [{label: "Provider", value: a ? "Anthropic" : "OpenAI"}, {label: "API Key", value: key}, {label: "Base URL", value: base}, {label: "Model", value: id}],
+    dify: [{label: "Provider", value: a ? "Anthropic" : "OpenAI-API-compatible"}, {label: "API Key", value: key}, {label: "API URL", value: base}, {label: "Model", value: id}],
+    flowise: [{label: "Base Path", value: base}, {label: "API Key credential", value: key}, {label: "Model Name", value: id}],
     cherry: [{label: "Provider", value: a ? "Anthropic" : "OpenAI"}, {label: "API host", value: base}, {label: "API key", value: key}, {label: "Model", value: id}],
     jan: [{label: "Base URL", value: base}, {label: "API Key", value: key}, {label: "Model", value: id}],
     msty: [{label: "Endpoint", value: base}, {label: "API Key", value: key}, {label: "Model", value: id}],

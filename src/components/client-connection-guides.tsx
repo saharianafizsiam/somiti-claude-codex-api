@@ -122,6 +122,32 @@ export function ClientConnectionGuides({
             ))}
           </ol>
           {guide.note && <p className="console-guide-note">{guide.note}</p>}
+          {guide.id === "capabilities" && <>
+            <h3>Proxy capabilities</h3>
+            <p>Authenticate with your Somiti key using x-api-key or Authorization: Bearer. Claude Code sends ANTHROPIC_AUTH_TOKEN as a Bearer token.</p>
+            <div style={{overflowX: "auto"}}>
+              <table>
+                <thead><tr><th>Endpoint</th><th>Use</th></tr></thead>
+                <tbody>{[
+                  ["POST", "messages", "Anthropic Messages clients"],
+                  ["POST", "messages/count_tokens", "Anthropic token counting"],
+                  ["POST", "chat/completions", "OpenAI-compatible clients"],
+                  ["POST", "responses", "Codex CLI and Responses clients"],
+                  ["POST", "responses/compact", "Responses session compaction"],
+                  ["POST", "responses/input_tokens", "Responses input token counting"],
+                  ["GET", "models", "Available model discovery"],
+                ].map(([method, path, use]) => <tr key={path}><td><code>{method} {baseUrl}/{path}</code></td><td>{use}</td></tr>)}</tbody>
+              </table>
+            </div>
+            <h3>Connection URLs</h3>
+            <div className="console-guide-fields">
+              <div><label>Anthropic / Claude</label><CopyValue value={baseUrl} /></div>
+              <div><label>OpenAI-compatible</label><CopyValue value={baseUrl} /></div>
+            </div>
+            <h3>Unsupported endpoints</h3>
+            <p>File uploads, embeddings, audio, and image generation are not implemented. Use a separate embedding provider for document search. Image input in chat depends on the selected model.</p>
+            <p>Client setup requires a custom API endpoint setting. For Cursor, use the OpenAI-compatible setup shown in its guide.</p>
+          </>}
           {guide.id !== "capabilities" && (
             <>
               {!model ? (
