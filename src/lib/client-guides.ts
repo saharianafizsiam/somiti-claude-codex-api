@@ -123,18 +123,20 @@ export const clientGuides: ClientGuide[] = [
     "Use settings.json with camelCase. Restart Droid and select the custom model; the legacy config.json does not interpolate environment variables.",
   ]),
   entry("openclaw", "OpenClaw", agent, "either", [
-    "Merge the models.providers entry below into ~/.openclaw/openclaw.json.",
-    "Restart OpenClaw, then select somiti followed by the exact model ID.",
-    "Run openclaw models status --probe to check the connection.",
+    "Add a custom provider to ~/.openclaw/openclaw.json. Use the new somiti provider name instead of overriding anthropic or openai.",
+    "Merge the configuration below and keep the model ID exactly as shown in this dashboard's model list.",
+    "If agents.defaults.models is set anywhere in your config, it acts as an allowlist — add somiti/<model-id> there too, or you will get a model not allowed error.",
+    "Restart OpenClaw after saving and select the configured default model.",
   ]),
   entry("void", "Void", agent, "openai", [
-    "Open Settings → Providers → OpenAI-Compatible.",
-    "Enter the URL and key; manually add the model ID below.",
+    "Settings → Providers → OpenAI-Compatible; add the model manually.",
+    "Enter the Endpoint, API Key, and Model from the fields below.",
     "Select the model in chat.",
   ]),
   entry("editors-misc", "gptel / avante.nvim", agent, "anthropic", [
-    "For Emacs, add the gptel backend below to init.el and select it in gptel.",
-    "For Neovim, merge the claude provider below into your avante.nvim setup and set ANTHROPIC_API_KEY before opening Neovim.",
+    "Ready-to-use configurations for Emacs gptel and Neovim avante.nvim.",
+    "For Emacs, add the backend below to init.el and select Somiti in gptel.",
+    "For Neovim, merge the claude provider below into your avante.nvim setup. Run the terminal environment command before opening Neovim.",
   ]),
   entry(
     "open-webui",
@@ -142,43 +144,44 @@ export const clientGuides: ClientGuide[] = [
     chat,
     "openai",
     [
-      "Open Admin Panel → Settings → Connections and add an OpenAI connection.",
-      "Save the URL and key below, then refresh the model list.",
+      "Admin Panel → Settings → Connections → OpenAI API → +.",
+      "Fill in Base URL and the key, then click Save. Refresh the model list to discover available models automatically.",
       "Select the model in a new chat.",
     ],
     "Use a separate embedding provider for document search; Somiti has no embeddings endpoint.",
   ),
   entry("librechat", "LibreChat", chat, "openai", [
-    "Merge the custom endpoint below into librechat.yaml.",
-    "Restart LibreChat and select Somiti.",
+    "Add Somiti as a custom endpoint in librechat.yaml. fetch: true loads the available models from your assigned route.",
+    "Restart LibreChat and select Somiti. Automatic conversation titles use the selected model and make additional billable requests.",
   ]),
   entry("sillytavern", "SillyTavern", chat, "either", [
     "Open API Connections and choose Chat Completion.",
-    "For a messages model choose Claude and use its reverse proxy settings. For a chat-completions model choose Custom (OpenAI-compatible).",
-    "Enter the fields below, connect, and choose the exact model ID.",
+    "Choose Source: Custom (OpenAI-compatible) when the Provider below is OpenAI-compatible. For an Anthropic-only model, choose Source: Claude and use the Reverse Proxy URL and Proxy Password below.",
+    "Fill in the fields below and click Connect.",
+    "If a new Sonnet/Opus returns 400, reset temperature and top_p to their defaults.",
   ]),
   entry("chatbox", "Chatbox", chat, "either", [
     "Open Settings → Model Provider.",
-    "Choose Claude/Anthropic for messages, or an OpenAI-compatible provider for chat completions.",
+    "Choose Claude (Anthropic) for an Anthropic model, or an OpenAI-compatible provider for a chat-completions model. Follow the Provider field below.",
     "Set the API host, key, and model, then save.",
   ]),
   entry("lobechat", "LobeChat", chat, "anthropic", [
     "Open Settings → Language Models → Anthropic.",
-    "Set the proxy address and API key; add the model ID if it is absent.",
+    "Set API Proxy Address and API Key using the fields below. If the model does not appear, add its ID to Model List manually.",
     "Enable the model and start a chat.",
   ]),
   entry("cherry", "Cherry Studio", chat, "either", [
-    "Open Settings → Providers and add a provider.",
+    "Open Settings → Model Providers and add a new provider.",
     "Choose Anthropic for messages or OpenAI for chat completions (not OpenAI Responses).",
     "Set the API host and key, add the exact model ID, and enable the provider.",
   ]),
   entry("jan", "Jan", chat, "openai", [
-    "Open Settings → Model Providers and add an OpenAI-compatible remote provider.",
+    "Settings → Model Providers → Add Provider (OpenAI-compatible).",
     "Enter the API URL and key, then add the model ID.",
     "Use that remote model in chat.",
   ]),
   entry("msty", "Msty", chat, "openai", [
-    "Open the remote model/provider settings and add OpenAI Compatible.",
+    "Settings → Remote Model Providers → Add → Open AI Compatible.",
     "Enter the base URL and API key; fetch models or add the ID manually.",
     "Select the model for a conversation.",
   ]),
@@ -188,15 +191,15 @@ export const clientGuides: ClientGuide[] = [
     chat,
     "openai",
     [
-      "Open model settings and add a custom model.",
+      "Settings → Models → Custom Models → Add; enable Streaming.",
       "Use the full chat-completions URL below, not just the base URL.",
       "Set the API key and model ID, then test.",
     ],
     "A browser-only client may require CORS support. Use a server-side connection if the browser blocks the request.",
   ),
   entry("obsidian", "Obsidian Copilot", chat, "openai", [
-    "Open Obsidian Settings → Copilot → Models and add a custom model.",
-    "Choose OpenAI-compatible and set the URL, key, and model ID.",
+    "Copilot Settings → Model → Add Custom Model.",
+    "Choose 3rd party (openai format) and set the Base URL, API Key, and Model below.",
     "Select the model for chat. Configure embeddings separately for vault search.",
   ]),
   entry(
@@ -205,16 +208,16 @@ export const clientGuides: ClientGuide[] = [
     chat,
     "openai",
     [
-      "Open AI settings and use Reveal Providers Config if available.",
+      "Raycast → AI Settings → Reveal Providers Config.",
       "Merge the custom provider below into providers.yaml.",
       "Reload providers and select Somiti.",
     ],
     "Requires Raycast's custom-provider feature; a regular API-key-only form cannot change the API host.",
   ),
   entry("hermes", "Hermes", chat, "openai", [
-    "Open the model/provider configuration and select a custom OpenAI-compatible endpoint.",
-    "Choose Chat Completions and enter the fields below.",
-    "Save and restart your session.",
+    "Run hermes model, choose Custom endpoint, then enter the values below.",
+    "Choose Chat Completions. If the interactive setup does not work, merge the two files below into your existing configuration.",
+    "Restart Hermes after saving. Do not choose Anthropic OAuth for this key.",
   ]),
   entry(
     "claude-desktop",
@@ -293,7 +296,7 @@ export function connectionGuide(
   const base = baseUrl.replace(/\/$/, "");
   const a =
     guide.protocol === "anthropic" ||
-    (guide.protocol === "either" && model.anthropic);
+    (guide.protocol === "either" && model.anthropic && !(guide.id === "sillytavern" && model.openai));
   const protocol = a ? "anthropic" : "openai";
   const id = model.id;
   const q = (v: unknown) => JSON.stringify(v, null, 2);
@@ -451,7 +454,9 @@ export function connectionGuide(
       break;
     case "openclaw":
       add("~/.openclaw/openclaw.json", {
+        agents: { defaults: { model: { primary: `somiti/${id}` } } },
         models: {
+          mode: "merge",
           providers: {
             somiti: {
               baseUrl: base,
@@ -493,14 +498,21 @@ export function connectionGuide(
     case "librechat":
       add(
         "librechat.yaml",
-        `endpoints:\n  custom:\n    - name: Somiti\n      baseURL: ${q(base)}\n      apiKey: ${q(key)}\n      models:\n        default: [${q(id)}]\n        fetch: true\n      titleConvo: false`,
+        `endpoints:\n  custom:\n    - name: Somiti\n      baseURL: ${q(base)}\n      apiKey: ${q(key)}\n      models:\n        default: [${q(id)}]\n        fetch: true\n      titleConvo: true\n      titleModel: ${q(id)}`,
       );
+      break;
+    case "lobechat":
+      add("Self-hosted environment", `ANTHROPIC_API_KEY=${key}\nANTHROPIC_PROXY_URL=${base}`);
       break;
     case "raycast":
       add(
         "providers.yaml",
-        `providers:\n  - id: somiti\n    name: Somiti\n    base_url: ${q(base)}\n    api_keys:\n      openai: ${q(key)}\n    models:\n      - id: ${q(id)}\n        name: ${q(model.name)}`,
+        `providers:\n  - id: somiti\n    name: Somiti\n    base_url: ${q(base)}\n    api_keys:\n      openai: ${q(key)}\n    models:\n      - id: ${q(id)}\n        name: ${q(model.name)}${model.contextWindow ? `\n        context: ${model.contextWindow}` : ""}\n        abilities:\n          temperature:\n            supported: false`,
       );
+      break;
+    case "hermes":
+      add("~/.hermes/config.yaml", `model:\n  provider: custom\n  default: ${q(id)}\n  base_url: ${q(base)}\n  api_mode: chat_completions`);
+      add("~/.hermes/.env", `OPENAI_API_KEY=${key}`);
       break;
     case "litellm":
       add(
@@ -556,5 +568,18 @@ export function connectionGuide(
   }
   if (guide.id === "roo-code") return {fields: [{label:"API Provider",value:"Anthropic"},{label:"Anthropic API Key",value:key},{label:"Custom base URL",value:base},{label:"Model",value:id}],snippets,endpoint,protocol};
   if (guide.id === "claude-desktop") return { fields: [{label: "Gateway base URL", value: base}, {label: "Gateway API key", value: key}, {label: "Gateway auth scheme", value: "x-api-key"}], snippets: [], endpoint, protocol };
-  return { fields, snippets, endpoint, protocol };
+  const clientFields: Record<string, {label: string; value: string}[]> = {
+    cherry: [{label: "Provider", value: a ? "Anthropic" : "OpenAI"}, {label: "API host", value: base}, {label: "API key", value: key}, {label: "Model", value: id}],
+    jan: [{label: "Base URL", value: base}, {label: "API Key", value: key}, {label: "Model", value: id}],
+    msty: [{label: "Endpoint", value: base}, {label: "API Key", value: key}, {label: "Model", value: id}],
+    typingmind: [{label: "Endpoint", value: endpoint}, {label: "API Key", value: key}, {label: "Model ID", value: id}],
+    obsidian: [{label: "Provider", value: "3rd party (openai format)"}, {label: "Base URL", value: base}, {label: "API Key", value: key}, {label: "Model", value: id}],
+    hermes: [{label: "Base URL", value: base}, {label: "API key", value: key}, {label: "API compatibility / transport", value: "Chat Completions"}, {label: "Model", value: id}],
+    void: [{label: "Endpoint", value: base}, {label: "API Key", value: key}, {label: "Model", value: id}],
+    "open-webui": [{label: "API Base URL", value: base}, {label: "API Key", value: key}],
+    sillytavern: [{label: "Provider", value: a ? "Claude" : "Custom (OpenAI-compatible)"}, {label: a ? "Reverse Proxy URL" : "Custom Endpoint (Base URL)", value: a ? `${base}/v1` : base}, {label: a ? "Proxy Password" : "API Key", value: key}, {label: "Model", value: id}],
+    chatbox: [{label: "Provider", value: a ? "Claude (Anthropic)" : "OpenAI-compatible"}, {label: "API Host", value: base}, {label: "API Key", value: key}, {label: "Model", value: id}],
+    lobechat: [{label: "API Key", value: key}, {label: "API Proxy Address", value: base}, {label: "Model", value: id}],
+  };
+  return { fields: clientFields[guide.id] ?? fields, snippets, endpoint, protocol };
 }
