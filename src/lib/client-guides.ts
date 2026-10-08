@@ -222,10 +222,10 @@ export const clientGuides: ClientGuide[] = [
     chat,
     "anthropic",
     [
-      "If your managed Desktop installation offers a gateway connection, enter the Somiti URL and key there using x-api-key authentication.",
-      "If there is no custom gateway setting, use Claude Code or another client listed here.",
+      "Enable developer mode: Settings → Help → Troubleshooting → Enable Developer Mode.",
+      "Open Settings → Developer → Configure Third-Party Inference. Under Connection choose Gateway, and set Credential kind to Static API key.",
+      "Enter the gateway settings below, click Test connection → Apply Changes.",
     ],
-    "This is not a general replacement for a Claude subscription login. Desktop gateway setup depends on the installed version and organization policy.",
   ),
   entry("n8n", "n8n", api, "either", [
     "Add an Anthropic or OpenAI credential matching the selected protocol.",
@@ -544,5 +544,6 @@ export function connectionGuide(
       break;
     }
   }
+  if (guide.id === "claude-desktop") return { fields: [{label: "Gateway base URL", value: base}, {label: "Gateway API key", value: key}, {label: "Gateway auth scheme", value: "x-api-key"}], snippets: [], endpoint, protocol };
   return { fields, snippets, endpoint, protocol };
 }

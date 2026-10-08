@@ -137,7 +137,7 @@ export function ClientConnectionGuides({
                 </p>
               ) : (
                 <>
-                  <label>
+                  {guide.id !== "claude-desktop" && <label>
                     Connection model
                     <select
                       aria-label="Connection model"
@@ -150,7 +150,7 @@ export function ClientConnectionGuides({
                         </option>
                       ))}
                     </select>
-                  </label>
+                  </label>}
                   {guide.group === "Agents & IDEs" && !model.tools && (
                     <p className="console-guide-note">
                       Agent tool use is disabled for this model. Your
@@ -159,7 +159,7 @@ export function ClientConnectionGuides({
                     </p>
                   )}
                   <div className="console-guide-controls">
-                    <div role="group" aria-label="Operating system">
+                    {guide.id !== "claude-desktop" && <div role="group" aria-label="Operating system">
                       <button
                         aria-pressed={os === "unix"}
                         onClick={() => setOs("unix")}
@@ -172,7 +172,7 @@ export function ClientConnectionGuides({
                       >
                         PowerShell
                       </button>
-                    </div>
+                    </div>}
                     <button
                       disabled={busy}
                       onClick={async () => {
@@ -208,7 +208,7 @@ export function ClientConnectionGuides({
                   </div>
                   {error && <p role="alert">{error}</p>}
                   <p>
-                    Merge configuration examples into your existing settings.{" "}
+                    {guide.id === "claude-desktop" ? "Copy these values into the gateway settings. " : "Merge configuration examples into your existing settings. "}
                     {credential
                       ? "Examples now contain your private Somiti key. Keep copied files private."
                       : "Replace YOUR_SOMITI_API_KEY with your key, or use the button above."}
