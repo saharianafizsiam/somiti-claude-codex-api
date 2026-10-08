@@ -171,16 +171,15 @@ export async function gateway(
         "invalid_request",
         "Vision is not supported for this model.",
       );
-    const maxOutput =
+    const requestedOutput =
       body.max_output_tokens ??
       body.max_completion_tokens ??
       body.max_tokens ??
       model.maxOutputTokens;
-    if (maxOutput > model.maxOutputTokens)
-      throw new AppError(
-        "invalid_request",
-        "Requested output exceeds model limit.",
-      );
+    const maxOutput = Math.min(requestedOutput, model.maxOutputTokens);
+    const thinking = body.thinking;
+    if (!auxiliary && thinking && typeof thinking === "object" && "budget_tokens" in thinking && typeof thinking.budget_tokens === "number" && thinking.budget_tokens >= maxOutput)
+      throw new AppError("invalid_request", `The thinking budget must be below this model's configured output limit of ${maxOutput} tokens. Lower the thinking budget or ask your administrator to raise the model limit.`);
     if (!key.encryptedUpstreamKey || key.upstreamProvider !== selectedProvider)
       throw new AppError(
         "key_not_configured",

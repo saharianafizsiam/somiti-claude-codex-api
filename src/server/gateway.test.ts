@@ -216,3 +216,14 @@ it("does not expose transport errors containing credentials", async () => {
  const r = await gateway(request({model:"gpt-test",input:"Hi"}),"responses","claude-n-codex");
  expect(r.status).toBe(502); const body = await r.text(); expect(body).toContain("provider_connection_failed"); expect(body).not.toContain("secret-key");
 });
+
+it("caps oversized output requests instead of rejecting a valid prompt", async () => {
+ f.send.mockResolvedValue(Response.json({model:"gpt-test",output:[],usage:{input_tokens:1,output_tokens:1}}));
+ const r = await gateway(request({model:"gpt-test",input:"Hi",max_output_tokens:10000}),"responses","claude-n-codex");
+ expect(r.status).toBe(200);
+ expect(f.send.mock.calls[0][1].max_output_tokens).toBe(100);
+});
+it("rejects an explicit thinking budget that cannot fit the output cap", async () => {
+ const r = await gateway(request({model:"gpt-test",input:"Hi",max_output_tokens:10000,thinking:{type:"enabled",budget_tokens:1000}}),"responses","claude-n-codex");
+ expect(r.status).toBe(400); expect(await r.text()).toContain("thinking budget"); expect(f.send).not.toHaveBeenCalled();
+});
