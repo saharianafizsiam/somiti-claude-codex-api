@@ -460,7 +460,7 @@ export async function OwnerPage({
                   )}
                 </span>,
                 k.requests,
-                `${k.rateLimitPerMinute}/min`,
+                "Upstream managed",
                 k.expiresAt?.toISOString().slice(0, 10) || "Never",
                 <Badge key="status" value={k.status} />,
               ])}

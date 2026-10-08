@@ -171,15 +171,7 @@ export async function gateway(
         "invalid_request",
         "Vision is not supported for this model.",
       );
-    const requestedOutput =
-      body.max_output_tokens ??
-      body.max_completion_tokens ??
-      body.max_tokens ??
-      model.maxOutputTokens;
-    const maxOutput = Math.min(requestedOutput, model.maxOutputTokens);
-    const thinking = body.thinking;
-    if (!auxiliary && thinking && typeof thinking === "object" && "budget_tokens" in thinking && typeof thinking.budget_tokens === "number" && thinking.budget_tokens >= maxOutput)
-      throw new AppError("invalid_request", `The thinking budget must be below this model's configured output limit of ${maxOutput} tokens. Lower the thinking budget or ask your administrator to raise the model limit.`);
+    const maxOutput = body.max_output_tokens ?? body.max_completion_tokens ?? body.max_tokens;
     if (!key.encryptedUpstreamKey || key.upstreamProvider !== selectedProvider)
       throw new AppError(
         "key_not_configured",
@@ -196,7 +188,7 @@ export async function gateway(
       key.keyHash,
       model,
       endpoint,
-      maxOutput,
+      maxOutput ?? 0,
       requestIp(req.headers),
       {
         provider: key.upstreamProvider,
@@ -213,7 +205,7 @@ export async function gateway(
       delete payload.max_tokens;
       delete payload.max_completion_tokens;
       if (!auxiliary) {
-        payload.max_output_tokens = maxOutput;
+        if (maxOutput !== undefined) payload.max_output_tokens = maxOutput;
         payload.store = false;
       }
     } else if (auxiliary) {
@@ -221,7 +213,7 @@ export async function gateway(
     } else if (body.max_completion_tokens !== undefined) {
       payload.max_completion_tokens = maxOutput;
       delete payload.max_tokens;
-    } else payload.max_tokens = maxOutput;
+    } else if (maxOutput !== undefined) payload.max_tokens = maxOutput;
     if (body.stream && endpoint === "chat/completions")
       payload.stream_options = { include_usage: true };
     let response: Response;

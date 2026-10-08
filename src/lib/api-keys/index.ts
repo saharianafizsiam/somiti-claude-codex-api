@@ -11,7 +11,6 @@ import {
 import { hash } from "../security/secrets";
 import { AppError } from "../errors";
 import { requestIp } from "../security/ip";
-import { rateLimit } from "../rate-limit";
 import { canAccess } from "../models/access";
 export function validateKey(key: ApiKey | undefined, ip: string | null) {
   if (!key) throw new AppError("invalid_api_key", "Invalid API key.", 401);
@@ -40,7 +39,6 @@ export async function authenticate(req: Request) {
     .where(eq(apiKeys.keyHash, hash(value)))
     .limit(1);
   validateKey(key, requestIp(req.headers));
-  await rateLimit(`api:${key.id}`, key.rateLimitPerMinute);
   return key;
 }
 export async function sharedKey(token: string) {

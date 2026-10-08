@@ -53,7 +53,7 @@ describe("v2 client guides", () => {
               expect(() => JSON.parse(snippet.code)).not.toThrow();
         }
   });
-  it("uses model-specific limits and explicit Anthropic SDK base URL", () => {
+  it("does not inject output caps and uses explicit Anthropic SDK base URL", () => {
     const guide = clientGuides.find((g) => g.id === "claude-code")!;
     const result = connectionGuide(
       guide,
@@ -64,7 +64,7 @@ describe("v2 client guides", () => {
     );
     const env = JSON.parse(result.snippets[0].code).env;
     expect(env.ANTHROPIC_BASE_URL).toBe("https://api.somiti.page/v2");
-    expect(env.CLAUDE_CODE_MAX_OUTPUT_TOKENS).toBe("2048");
+    expect(env.CLAUDE_CODE_MAX_OUTPUT_TOKENS).toBeUndefined();
     expect(result.snippets[1].code).toContain("$env:ANTHROPIC_MODEL");
   });
 });

@@ -356,7 +356,6 @@ export function connectionGuide(
         ANTHROPIC_DEFAULT_SONNET_MODEL: id,
         ANTHROPIC_DEFAULT_OPUS_MODEL: id,
         ANTHROPIC_DEFAULT_HAIKU_MODEL: id,
-        CLAUDE_CODE_MAX_OUTPUT_TOKENS: String(model.maxOutputTokens ?? 4096),
       };
       add("~/.claude/settings.json", { env: values });
       add(
@@ -422,7 +421,6 @@ export function connectionGuide(
                 id,
                 name: model.name,
                 context_window: model.contextWindow ?? 32768,
-                default_max_tokens: model.maxOutputTokens ?? 4096,
               },
             ],
           },
@@ -455,7 +453,6 @@ export function connectionGuide(
                   id,
                   name: model.name,
                   contextWindow: model.contextWindow ?? 32768,
-                  maxTokens: model.maxOutputTokens ?? 4096,
                 },
               ],
             },

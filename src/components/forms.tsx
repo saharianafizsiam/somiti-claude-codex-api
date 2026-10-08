@@ -129,12 +129,8 @@ export function KeyForm({
           <option value="CUSTOM">Custom models</option>
         </select>
       </label>
-      <Field
-        label="Requests per minute"
-        name="rateLimitPerMinute"
-        type="number"
-        value={Number(initial.rateLimitPerMinute || 60)}
-      />
+      <input type="hidden" name="rateLimitPerMinute" value="60" />
+      <p>Request rate and token limits are controlled by the upstream account.</p>
       <Field
         label="Expiration (UTC, optional)"
         name="expiresAt"
