@@ -6,5 +6,7 @@ export function importedCapabilities<T extends { provider: string; family: strin
 }
 
 export function verifiedVision(provider: string, id: string) {
- return provider === "claude-n-codex" && ["claude-opus-5-5", "claude-opus-5.5", "opus-5-5", "opus-5.5"].includes(id);
+ // Verified with image + tool requests against the assigned upstream on 2026-10-09.
+ const canonical = id.replace(/^claude-/, "").replaceAll(".", "-");
+ return provider === "claude-n-codex" && ["fable-5", "fable-5-1", "opus-4-6", "opus-4-7", "opus-4-8", "opus-5", "opus-5-5", "sonnet-4-6", "sonnet-5"].includes(canonical);
 }
