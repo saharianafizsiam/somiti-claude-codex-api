@@ -176,6 +176,8 @@ export function SecretReveal({
 }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState("");
+  const [copying, setCopying] = useState(false);
+  const [copied, setCopied] = useState(false);
   return (
     <div>
       {value ? (
@@ -183,6 +185,14 @@ export function SecretReveal({
       ) : (
         <div className="copy-value">
           <code>{prefix}••••••••••••</code>
+          <Button type="button" variant="ghost" size="sm" disabled={copying} aria-label="Copy API key without revealing" onClick={async () => {
+            setCopying(true); setError("");
+            try {
+              const result = keyId ? await callAction("key.reveal", {id:keyId}) : await fetch(`/api/share/${shareToken}/reveal`, {cache:"no-store"}).then(async r => {if(!r.ok) throw new Error("Could not copy your key. Try again."); return r.json();});
+              await navigator.clipboard.writeText(result.apiKey);
+              setCopied(true); setTimeout(() => setCopied(false), 1800);
+            } catch(e) {setError((e as Error).message);} finally {setCopying(false);}
+          }}>{copied ? <Check size={15}/> : <Copy size={15}/>} {copying ? "Copying…" : copied ? "Copied" : "Copy"}</Button>
           <Button
             type="button"
             variant="ghost"

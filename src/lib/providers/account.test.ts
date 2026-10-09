@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { parseAccountHistory, parseAccountStats } from "./account";
+import { parseAccountHistory, parseAccountStats, filterHistoryPage, type AccountLog } from "./account";
+
+it("filters used models across pages before pagination", () => {
+  const logs = Array.from({length:80},(_,i)=>({id:String(i),model:i%2 ? "sonnet" : "opus"}) as AccountLog);
+  const page = filterHistoryPage(logs,2,"sonnet");
+  expect(page.total).toBe(40);
+  expect(page.logs).toHaveLength(15);
+  expect(page.logs.every(l=>l.model==="sonnet")).toBe(true);
+  expect(page.models).toEqual(["opus","sonnet"]);
+  expect(filterHistoryPage(logs,1,"unused").logs).toEqual([]);
+});
 describe("account dashboard data", () => {
   const request = {
     created_at: "2026-10-06T17:02:46",

@@ -2374,3 +2374,24 @@ body,
 .console-metrics .console-panel:nth-child(3) > strong {
   color: #13c99a;
 }
+
+/* Usage numbers stay legible at both cents and fractional-cent precision. */
+.console-allocation strong, .console-amount, .console-metrics strong, .spend-total strong {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.025em;
+}
+.console-metrics .console-panel { min-height: 190px; display: flex; flex-direction: column; gap: 8px; }
+.console-metrics .metric-heading { margin-bottom: 6px; }
+.console-metrics .console-panel > strong { font-size: clamp(26px, 2.5vw, 36px); line-height: 1.15; margin: 0; }
+.console-metrics .metric-unit { font-size: 12px; font-weight: 400; letter-spacing: normal; color: #a8b2c4; }
+.console-metrics .console-panel > small { line-height: 1.5; min-height: 36px; color: #a8b2c4; }
+.console-metrics .console-panel:nth-child(2) > strong { color: #7dd3fc; }
+.console-metrics .console-panel:nth-child(4) > strong { color: #fbbf24; }
+.spend-total { display: flex; flex-direction: column; gap: 4px; text-align: right; }
+.spend-total strong { font-size: 24px; color: #fbbf24; }
+.spend-total small { color: #a8b2c4; }
+.console-history select { min-width: 210px; max-width: 100%; border-radius: 10px; }
+.console-history .console-section-head p { color: #a8b2c4; font-size: 13px; }
+.account-spend-chart { border-bottom: 1px solid #29303b; padding-top: 16px; }
+.console-history select:focus-visible { outline: 2px solid #fbbf24; outline-offset: 3px; }
+@media (max-width: 600px) { .console-history select { width: 100%; } .spend-total strong { font-size: 20px; } }

@@ -68,6 +68,8 @@ const money = (v: string | null) =>
     : new Intl.NumberFormat("en-US", {
         style: "currency",
         currency: "USD",
+        minimumFractionDigits: 4,
+        maximumFractionDigits: 4,
       }).format(Number(v));
 const sections = [
   { name: "Overview", icon: LayoutGrid },
@@ -83,6 +85,9 @@ export function CustomerConsole(p: Props) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [history, setHistory] = useState<CustomerLog[] | null>(null);
+  const [usedModels, setUsedModels] = useState<string[]>([]);
+  const [historyTotal, setHistoryTotal] = useState<number | null>(p.account?.history?.total ?? null);
+  const [partialHistory, setPartialHistory] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [client, setClient] = useState("cURL");
@@ -128,19 +133,23 @@ export function CustomerConsole(p: Props) {
         )
       : 0;
   const low = p.quota.remaining !== null && percentage < 15;
-  async function loadHistory(next: number) {
+  async function loadHistory(next: number, selectedFilter = filter) {
     setBusy(true);
     setError("");
     try {
       const response = await fetch(
-        `/api/share/${p.shareToken}/history?${new URLSearchParams({ page: String(next), model: filter })}`,
+        `/api/share/${p.shareToken}/history?${new URLSearchParams({ page: String(next), model: selectedFilter })}`,
         { cache: "no-store" },
       );
       if (!response.ok)
         throw new Error(
           "Could not load history. Check that your dashboard link is still active.",
         );
-      setHistory((await response.json()).logs);
+      const data = await response.json();
+      setHistory(data.logs);
+      setUsedModels(previous => [...new Set([...previous,...(data.models ?? data.logs.map((l: CustomerLog)=>l.model).filter(Boolean))])].sort());
+      setHistoryTotal(data.total ?? null);
+      setPartialHistory(Boolean(data.partial));
       setPage(next);
     } catch (e) {
       setError((e as Error).message);
@@ -316,6 +325,7 @@ export function CustomerConsole(p: Props) {
               aria-current={view === name ? "page" : undefined}
               onClick={() => {
                 setView(name);
+                if (name === "History") void loadHistory(1);
                 window.scrollTo({ top: 0 });
               }}
             >
@@ -415,7 +425,7 @@ export function CustomerConsole(p: Props) {
                       : p.stats.requests
                         ? `${(((p.stats.requests - p.stats.errors) / p.stats.requests) * 100).toFixed(1)}%`
                         : "—",
-                    note: "Recorded requests over 30 days",
+                    note: `${(accountStats?.requests ?? p.stats.requests).toLocaleString()} requests · last 30 days`,
                   },
                   {
                     label: "Response speed",
@@ -440,7 +450,7 @@ export function CustomerConsole(p: Props) {
                         : `${accountStats.cacheHit.toFixed(1)}%`
                       : p.stats.tokens.toLocaleString(),
                     note: p.account
-                      ? "Account cache reads over 30 days"
+                      ? `${accountStats?.tokens.cacheRead?.toLocaleString() ?? "—"} tokens read from cache · 30 days`
                       : "Recorded tokens over 30 days",
                   },
                   {
@@ -487,7 +497,7 @@ export function CustomerConsole(p: Props) {
                         ⓘ
                       </UsageTooltip>
                     </div>
-                    <strong>{value}</strong>
+                    <strong>{value}{label === "Today" && <span className="metric-unit"> requests</span>}</strong>
                     <small>{note}</small>
                     <MetricChart
                       label={label}
@@ -504,8 +514,7 @@ export function CustomerConsole(p: Props) {
               )}
               {accountStats && (
                 <section className="console-panel">
-                  <h2>Daily spending</h2>
-                  <p>Last 14 days · UTC</p>
+                  <div className="console-section-head"><div><h2>Dollar spend</h2><p>Daily charges · last 14 days · UTC</p></div><div className="spend-total"><strong>{money(String(accountStats.days.filter(d=>d.date >= new Date(Date.now()-13*86400000).toISOString().slice(0,10)).reduce((sum,d)=>sum+Number(d.spend),0)))}</strong><small>14-day total</small></div></div>
                   <div className="account-spend-chart">
                     {Array.from({ length: 14 }, (_, i) => {
                       const date = new Date();
@@ -516,7 +525,7 @@ export function CustomerConsole(p: Props) {
                       );
                       const spend = record?.spend;
                       const max = Math.max(
-                        1,
+                        0.0001,
                         ...accountStats.days
                           .filter(
                             (d) =>
@@ -573,7 +582,7 @@ export function CustomerConsole(p: Props) {
                         : "Usage recorded through Somiti"}
                     </p>
                   </div>
-                  <button onClick={() => setView("History")}>
+                  <button onClick={() => {setView("History"); void loadHistory(1);}}>
                     Full history
                   </button>
                 </div>
@@ -712,20 +721,16 @@ export function CustomerConsole(p: Props) {
               <div className="console-section-head">
                 <div>
                   <h2>Request history</h2>
-                  <p>All times are UTC</p>
+                  <p>{historyTotal === null ? "Request activity" : `${historyTotal.toLocaleString()} requests${filter ? " for this model" : " total"}`} · All times are UTC</p>
                 </div>
                 <label>
-                  {p.account ? "Filter this page by model" : "Filter model"}
-                  <input
-                    aria-label="History model ID"
-                    placeholder="Exact model ID"
+                  <select
+                    aria-label="Filter history by model"
                     value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
-                  />
+                    disabled={busy}
+                    onChange={(e) => {setFilter(e.target.value); void loadHistory(1,e.target.value);}}
+                  ><option value="">All models</option>{[...new Set([...usedModels,...initialLogs.map(l=>l.model).filter((m): m is string=>Boolean(m))])].sort().map(m=><option key={m} value={m}>{m}</option>)}</select>
                 </label>
-                <button disabled={busy} onClick={() => loadHistory(1)}>
-                  Apply filter
-                </button>
               </div>
               {table(
                 (history ?? initialLogs).filter(
@@ -733,6 +738,8 @@ export function CustomerConsole(p: Props) {
                 ),
               )}
               {error && <p role="alert">{error}</p>}
+              {busy && <p role="status">Loading requests…</p>}
+              {partialHistory && <p role="status">Showing models and requests from the latest 5,000 records.</p>}
               <div className="console-pagination">
                 <button
                   disabled={busy || page === 1}
@@ -742,7 +749,7 @@ export function CustomerConsole(p: Props) {
                 </button>
                 <span>Page {page}</span>
                 <button
-                  disabled={busy || (history ?? initialLogs).length < 25}
+                  disabled={busy || (historyTotal !== null ? page * 25 >= historyTotal : (history ?? initialLogs).length < 25)}
                   onClick={() => loadHistory(page + 1)}
                 >
                   Next

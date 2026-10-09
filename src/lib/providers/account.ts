@@ -157,6 +157,22 @@ export async function accountHistory(
     offset,
   );
 }
+export async function filteredAccountHistory(key: BoundKey, catalog: Catalog, page: number, model: string) {
+  const logs: AccountLog[] = [];
+  let total = 0;
+  for (let offset = 0; offset < 5000; offset += 100) {
+    const result = parseAccountHistory(await readAccount(key, `/requests?offset=${offset}&limit=100`), catalog, offset);
+    if (!result) return null;
+    total = result.total;
+    logs.push(...result.logs);
+    if (!result.logs.length || logs.length >= total) break;
+  }
+  return { ...filterHistoryPage(logs, page, model), partial:logs.length < total };
+}
+export function filterHistoryPage(logs: AccountLog[], page: number, model: string) {
+  const filtered = model ? logs.filter(l => l.model === model) : logs;
+  return {logs:filtered.slice((page-1)*25,page*25),total:filtered.length,models:[...new Set(logs.map(l=>l.model))].sort()};
+}
 export function parseAccountStats(body: unknown): AccountInfo["stats"] {
   const parsed = statsSchema.safeParse(body);
   if (!parsed.success) return null;
