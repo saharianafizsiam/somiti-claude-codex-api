@@ -43,7 +43,9 @@ export async function gateway(
         "This account route does not provide Responses token counting. Messages token counting is available.",
         501,
       );
-    const json = await readJson(req, 2_000_000);
+    // Leave room below the hosting platform's 4.5 MB payload ceiling.
+    // A 2.75 MB PNG becomes about 3.67 MB in an inline base64 image request.
+    const json = await readJson(req, 4_400_000);
     const body = bodySchema.parse(json);
     const responses = endpoint.startsWith("responses");
     const auxiliary =

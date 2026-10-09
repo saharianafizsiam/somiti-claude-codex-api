@@ -146,6 +146,8 @@ export function ClientConnectionGuides({
             </div>
             <h3>Unsupported endpoints</h3>
             <p>File uploads, embeddings, audio, and image generation are not implemented. Use a separate embedding provider for document search. Image input in chat depends on the selected model.</p>
+            <h3>Photos, screenshots, and video</h3>
+            <p>Attach photos and screenshots as images. Keep the encoded request below 4.4 MB; resize large images before sending. For video analysis, use a client that extracts timestamped image frames. Raw MP4 analysis is not verified on this route. Sampled frames do not include audio and may miss fast movements between frames.</p>
             <p>Client setup requires a custom API endpoint setting. For Cursor, use the OpenAI-compatible setup shown in its guide.</p>
           </>}
           {guide.id !== "capabilities" && (

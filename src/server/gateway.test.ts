@@ -66,12 +66,26 @@ beforeEach(() => {
   f.lookupFound = true;
   f.done = [];
   f.model.supportsTools = true;
+  f.model.supportsVision = false;
 });
 const request = (body: object) =>
   new Request("https://api.example/v2/responses", {
     method: "POST",
     body: JSON.stringify(body),
   });
+it("preserves a full-size screenshot payload above the old 2 MB limit", async () => {
+  f.model.supportsVision = true;
+  const image = "data:image/png;base64," + "A".repeat(3_666_316);
+  f.send.mockResolvedValue(Response.json({model:"gpt-test",output:[],usage:{input_tokens:1,output_tokens:1}}));
+  const r = await gateway(request({model:"gpt-test",input:[{role:"user",content:[{type:"input_image",image_url:image}]}]}),"responses","claude-n-codex");
+  expect(r.status).toBe(200);
+  expect(f.send.mock.calls[0][1].input[0].content[0].image_url).toBe(image);
+});
+it("rejects media beyond the hosting payload budget before forwarding", async () => {
+  const r = await gateway(request({model:"gpt-test",input:"x".repeat(4_400_000)}),"responses","claude-n-codex");
+  expect(r.status).toBe(413);
+  expect(f.send).not.toHaveBeenCalled();
+});
 it("forwards Responses input, tools and output limit with stateless storage", async () => {
   f.send.mockResolvedValue(
     Response.json({
