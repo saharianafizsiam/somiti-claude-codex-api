@@ -5,17 +5,30 @@ const num = z.number().finite().nonnegative();
 const money = z
   .union([z.string().regex(/^\d+(\.\d+)?$/), num])
   .transform(String);
+// Upstream service/in-progress requests can omit usage and timing fields.
+// Treat unavailable metrics as unknown; one such request must not hide history.
+const historyNumber = z
+  .union([
+    num,
+    z
+      .string()
+      .regex(/^\d+(\.\d+)?$/)
+      .transform(Number),
+  ])
+  .pipe(num)
+  .nullable()
+  .catch(null);
 const row = z.object({
   created_at: z.string(),
   model: z.string(),
-  status: z.number().int(),
-  input_tokens: num.nullable(),
-  output_tokens: num.nullable(),
-  cache_read_tokens: num.nullable(),
-  cache_write_tokens: num.nullable(),
-  charged_usd: money.nullable(),
-  ttft_ms: num.nullable(),
-  duration_ms: num.nullable(),
+  status: historyNumber,
+  input_tokens: historyNumber,
+  output_tokens: historyNumber,
+  cache_read_tokens: historyNumber,
+  cache_write_tokens: historyNumber,
+  charged_usd: money.nullable().catch(null),
+  ttft_ms: historyNumber,
+  duration_ms: historyNumber,
 });
 const historySchema = z.object({ total: num, requests: z.array(row).max(100) });
 const statsSchema = z.object({
@@ -92,21 +105,28 @@ export type AccountInfo = {
 async function readAccount(key: BoundKey, path: string) {
   if (key.upstreamProvider !== "claude-n-codex" || !key.encryptedUpstreamKey)
     return null;
-  try {
-    const url = new URL(
-      `https://claude-n-codex.com/api/backend/key-dashboard-v1${path}`,
-    );
-    url.searchParams.set("api_key", decrypt(key.encryptedUpstreamKey));
-    const response = await fetch(url, {
-      cache: "no-store",
-      redirect: "error",
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!response.ok) return null;
-    return (await response.json()) as unknown;
-  } catch {
-    return null;
-  } // Do not log URLs, raw responses or credentials.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const url = new URL(
+        `https://claude-n-codex.com/api/backend/key-dashboard-v1${path}`,
+      );
+      url.searchParams.set("api_key", decrypt(key.encryptedUpstreamKey));
+      const response = await fetch(url, {
+        cache: "no-store",
+        redirect: "error",
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!response.ok) {
+        await response.body?.cancel();
+        if (response.status >= 500 && attempt === 0) continue;
+        return null;
+      }
+      return (await response.json()) as unknown;
+    } catch {
+      if (attempt === 1) return null;
+    } // Do not log URLs, raw responses or credentials.
+  }
+  return null;
 }
 export function parseAccountHistory(
   body: unknown,
@@ -133,7 +153,7 @@ export function parseAccountHistory(
       created: Number.isFinite(timestamp)
         ? new Date(timestamp).toISOString()
         : "",
-      status: String(r.status),
+      status: r.status === null ? "Unknown" : String(r.status),
       input: r.input_tokens,
       output: r.output_tokens,
       cacheRead: r.cache_read_tokens,
@@ -157,21 +177,41 @@ export async function accountHistory(
     offset,
   );
 }
-export async function filteredAccountHistory(key: BoundKey, catalog: Catalog, page: number, model: string) {
+export async function filteredAccountHistory(
+  key: BoundKey,
+  catalog: Catalog,
+  page: number,
+  model: string,
+) {
   const logs: AccountLog[] = [];
   let total = 0;
   for (let offset = 0; offset < 5000; offset += 100) {
-    const result = parseAccountHistory(await readAccount(key, `/requests?offset=${offset}&limit=100`), catalog, offset);
+    const result = parseAccountHistory(
+      await readAccount(key, `/requests?offset=${offset}&limit=100`),
+      catalog,
+      offset,
+    );
     if (!result) return null;
     total = result.total;
     logs.push(...result.logs);
     if (!result.logs.length || logs.length >= total) break;
   }
-  return { ...filterHistoryPage(logs, page, model), partial:logs.length < total };
+  return {
+    ...filterHistoryPage(logs, page, model),
+    partial: logs.length < total,
+  };
 }
-export function filterHistoryPage(logs: AccountLog[], page: number, model: string) {
-  const filtered = model ? logs.filter(l => l.model === model) : logs;
-  return {logs:filtered.slice((page-1)*25,page*25),total:filtered.length,models:[...new Set(logs.map(l=>l.model))].sort()};
+export function filterHistoryPage(
+  logs: AccountLog[],
+  page: number,
+  model: string,
+) {
+  const filtered = model ? logs.filter((l) => l.model === model) : logs;
+  return {
+    logs: filtered.slice((page - 1) * 25, page * 25),
+    total: filtered.length,
+    models: [...new Set(logs.map((l) => l.model))].sort(),
+  };
 }
 export function parseAccountStats(body: unknown): AccountInfo["stats"] {
   const parsed = statsSchema.safeParse(body);

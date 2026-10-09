@@ -1,14 +1,54 @@
-import { describe, it, expect } from "vitest";
-import { parseAccountHistory, parseAccountStats, filterHistoryPage, type AccountLog } from "./account";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import {
+  parseAccountHistory,
+  parseAccountStats,
+  filterHistoryPage,
+  type AccountLog,
+  accountHistory,
+} from "./account";
+vi.mock("../security/secrets", () => ({ decrypt: () => "test-only-key" }));
+afterEach(() => vi.unstubAllGlobals());
+
+it("retries a temporary history failure without treating it as empty history", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValueOnce(new Response(null, { status: 503 }))
+    .mockResolvedValueOnce(Response.json({ total: 0, requests: [] }));
+  vi.stubGlobal("fetch", fetchMock);
+  expect(
+    await accountHistory(
+      { upstreamProvider: "claude-n-codex", encryptedUpstreamKey: "fixture" },
+      [],
+    ),
+  ).toEqual({ total: 0, logs: [] });
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+});
+it("does not retry rejected history credentials or disguise them as zero requests", async () => {
+  const fetchMock = vi
+    .fn()
+    .mockResolvedValue(new Response(null, { status: 401 }));
+  vi.stubGlobal("fetch", fetchMock);
+  expect(
+    await accountHistory(
+      { upstreamProvider: "claude-n-codex", encryptedUpstreamKey: "fixture" },
+      [],
+    ),
+  ).toBeNull();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
 
 it("filters used models across pages before pagination", () => {
-  const logs = Array.from({length:80},(_,i)=>({id:String(i),model:i%2 ? "sonnet" : "opus"}) as AccountLog);
-  const page = filterHistoryPage(logs,2,"sonnet");
+  const logs = Array.from(
+    { length: 80 },
+    (_, i) =>
+      ({ id: String(i), model: i % 2 ? "sonnet" : "opus" }) as AccountLog,
+  );
+  const page = filterHistoryPage(logs, 2, "sonnet");
   expect(page.total).toBe(40);
   expect(page.logs).toHaveLength(15);
-  expect(page.logs.every(l=>l.model==="sonnet")).toBe(true);
-  expect(page.models).toEqual(["opus","sonnet"]);
-  expect(filterHistoryPage(logs,1,"unused").logs).toEqual([]);
+  expect(page.logs.every((l) => l.model === "sonnet")).toBe(true);
+  expect(page.models).toEqual(["opus", "sonnet"]);
+  expect(filterHistoryPage(logs, 1, "unused").logs).toEqual([]);
 });
 describe("account dashboard data", () => {
   const request = {
@@ -40,6 +80,43 @@ describe("account dashboard data", () => {
     expect(JSON.stringify(result)).not.toMatch(
       /credential|secret|api_key|error_message/,
     );
+  });
+  it("keeps history when service requests omit metrics or contain unavailable values", () => {
+    const result = parseAccountHistory(
+      {
+        total: 3,
+        requests: [
+          request,
+          { created_at: request.created_at, model: request.model },
+          {
+            ...request,
+            status: "200",
+            input_tokens: "254",
+            ttft_ms: -1,
+            duration_ms: "",
+            charged_usd: "unavailable",
+            cache_write_tokens: undefined,
+          },
+        ],
+      },
+      [],
+    )!;
+    expect(result.logs).toHaveLength(3);
+    expect(result.logs[1]).toMatchObject({
+      status: "Unknown",
+      input: null,
+      charged: null,
+      ttft: null,
+    });
+    expect(result.logs[2]).toMatchObject({
+      status: "200",
+      input: 254,
+      ttft: null,
+      latency: null,
+      charged: null,
+      cacheWrite: null,
+    });
+    expect(result.logs[0].charged).toBe("0.0221");
   });
   it("redacts suspicious model values and handles invalid responses", () => {
     const result = parseAccountHistory(
