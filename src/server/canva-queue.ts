@@ -17,8 +17,10 @@ export function secureEqual(a: string, b: string) {
     y = Buffer.from(b);
   return x.length === y.length && timingSafeEqual(x, y);
 }
+const invitationCode = /^(?:\d{16}|CANVA-INVITE-(?:[A-Z0-9]{6}-){4}[A-Z0-9]{6})$/;
 const credentials = z.object({
-  code: z.string().regex(/^\d{16}$/),
+  // Continue accepting the original numeric codes so existing batches remain usable.
+  code: z.string().trim().toUpperCase().regex(invitationCode),
   email: z
     .string()
     .trim()

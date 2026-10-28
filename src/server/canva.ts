@@ -9,9 +9,14 @@ import { audit } from "@/lib/billing/ledger";
 import { AppError } from "@/lib/errors";
 
 export function newCanvaCode() {
-  return Array.from({ length: 2 }, () =>
-    randomInt(100_000_000).toString().padStart(8, "0"),
-  ).join("");
+  // Avoid ambiguous characters such as 0/O and 1/I in codes customers type.
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const group = () =>
+    Array.from(
+      { length: 6 },
+      () => alphabet[randomInt(0, alphabet.length)],
+    ).join("");
+  return `CANVA-INVITE-${Array.from({ length: 5 }, group).join("-")}`;
 }
 export async function canvaOverview(page = 1) {
   const user = await requireUser();

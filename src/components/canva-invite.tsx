@@ -78,15 +78,16 @@ export function CanvaInvite({ enabled = false }: { enabled?: boolean }) {
           }
         }}
       >
-        <label htmlFor="canva-code">16-digit code</label>
+        <label htmlFor="canva-code">Invitation code</label>
         <input
           id="canva-code"
           name="code"
-          inputMode="numeric"
-          pattern="[0-9]{16}"
-          maxLength={16}
+          inputMode="text"
+          pattern="(?:[0-9]{16}|CANVA-INVITE-(?:[A-Z0-9]{6}-){4}[A-Z0-9]{6})"
+          maxLength={47}
           autoComplete="off"
-          placeholder="0000000000000000"
+          placeholder="CANVA-INVITE-HDJ8SD-LS4H2L-4A2B9C-Q7M8NP-X3K5ZR"
+          style={{ textTransform: "uppercase" }}
           required
           disabled={!!receipt}
         />

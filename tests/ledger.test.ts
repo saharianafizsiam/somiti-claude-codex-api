@@ -70,6 +70,17 @@ describe("Canva invitation queue", () => {
     ).rejects.toThrow("not open");
     expect((await canvaOverview()).totals.unused).toBe(3);
   });
+  it("accepts an existing 16-digit code while delivery is disabled", async () => {
+    const legacyCode = "1234567890123456";
+    await database.insert(schema.canvaCodes).values({
+      codeHash: hash(`canva:${legacyCode}`),
+      encryptedCode: encrypt(legacyCode),
+      createdBy: state.user.id,
+    });
+    await expect(
+      enqueueCanva({ code: legacyCode, email: "legacy@example.test" }),
+    ).rejects.toThrow("not open");
+  });
   it("reserves once, rejects another email, and protects status access", async () => {
     process.env.CANVA_INVITES_ENABLED = "true";
     const [code] = await codes();
@@ -137,13 +148,16 @@ describe("Canva invitation queue", () => {
   });
 });
 describe("Canva code management", () => {
-  it("creates encrypted 16-digit codes and deletes only unused codes", async () => {
+  it("creates encrypted branded codes and deletes only unused codes", async () => {
     const result = (await canvaAction("generate", { quantity: 3 })) as {
       codes: string[];
     };
     expect(result.codes).toHaveLength(3);
     expect(new Set(result.codes).size).toBe(3);
-    for (const code of result.codes) expect(code).toMatch(/^\d{16}$/);
+    for (const code of result.codes)
+      expect(code).toMatch(
+        /^CANVA-INVITE-(?:[A-Z0-9]{6}-){4}[A-Z0-9]{6}$/,
+      );
     const stored = await database.select().from(schema.canvaCodes);
     expect(JSON.stringify(stored)).not.toContain(result.codes[0]);
     const overview = await canvaOverview();
