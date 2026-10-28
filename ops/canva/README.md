@@ -14,7 +14,7 @@ services as part of this setup. Copy this directory to `/opt/somiti-canva`, owne
 by root, then run `sudo bash /opt/somiti-canva/install-browser.sh`.
 
 The service uses a dedicated `somiti-canva` account, a private persistent profile,
-Chromium's namespace sandbox, 50% of one CPU, 650 MiB memory high watermark,
+Chromium's namespace sandbox, 50% of one CPU, 750 MiB memory high watermark,
 800 MiB maximum and 128 MiB maximum swap. Only this service is restarted on failure.
 The AppArmor exception for user namespaces is scoped to the installed root-owned
 Chromium binary. No global AppArmor setting is disabled.
@@ -28,8 +28,10 @@ The generated VNC password is in `/var/lib/somiti-canva/login-password.txt`
 Enter the Canva email and verification code directly in the browser, then select
 the Education team. Do not export session cookies.
 
-VNC and its web viewer bind only to 127.0.0.1. Never open AWS inbound ports 5902
-or 6082. No nginx changes are required. Close the SSH tunnel to close remote access.
+VNC, its web viewer and websocket bridge bind only to 127.0.0.1. Never open AWS
+inbound ports 5902, 6082 or 6083. The Node viewer serves assets without creating
+extra Python processes per request. No nginx changes are required. Close the
+SSH tunnel to close remote access.
 To release resources, `sudo systemctl stop somiti-canva-browser` preserves login.
 Use `sudo systemctl start somiti-canva-browser` when needed again.
 

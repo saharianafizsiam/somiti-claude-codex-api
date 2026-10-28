@@ -18,9 +18,11 @@ openbox --sm-disable &
 opid=$!
 x11vnc -display "$DISPLAY" -auth "$XAUTHORITY" -rfbauth /var/lib/somiti-canva/vnc.pass -no6 -listen 127.0.0.1 -rfbport 5902 -forever -shared -quiet &
 vpid=$!
-websockify --web=/usr/share/novnc 127.0.0.1:6082 127.0.0.1:5902 &
+websockify 127.0.0.1:6083 127.0.0.1:5902 &
 wpid=$!
+node /opt/somiti-canva/viewer.mjs &
+hpid=$!
 node /opt/somiti-canva/browser.mjs &
 bpid=$!
-wait -n "$xpid" "$opid" "$vpid" "$wpid" "$bpid"
+wait -n "$xpid" "$opid" "$vpid" "$wpid" "$hpid" "$bpid"
 exit 1
