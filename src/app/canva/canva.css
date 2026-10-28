@@ -1,0 +1,211 @@
+.canva-public {
+  max-width: 1120px;
+  margin: auto;
+  padding: 32px 28px;
+  min-height: 100vh;
+  background: var(--background);
+}
+.canva-public header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 24px;
+}
+.canva-public header a {
+  font-weight: 750;
+  letter-spacing: 0.06em;
+}
+.canva-public header span {
+  color: #b6a7ef;
+}
+.canva-invite-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 72px;
+  align-items: center;
+  padding: 80px 0;
+}
+.canva-invite-layout h1 {
+  font-size: clamp(36px, 4vw, 56px);
+  line-height: 1.12;
+  letter-spacing: -2px;
+  margin-bottom: 24px;
+}
+.canva-invite-layout section > p {
+  max-width: 47ch;
+}
+.canva-invite-layout ol {
+  padding-left: 22px;
+  margin: 32px 0;
+}
+.canva-invite-layout li {
+  padding: 8px 0;
+}
+.canva-form {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-top: 4px solid #a58ae5;
+  border-radius: 16px;
+  padding: 32px;
+}
+.canva-form h2 {
+  font-size: 24px;
+}
+.canva-form form {
+  display: grid;
+  gap: 12px;
+}
+.canva-form input {
+  width: 100%;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 13px;
+  color: var(--text);
+}
+.canva-form label {
+  margin-top: 8px;
+}
+.canva-form button {
+  margin-top: 14px;
+}
+.canva-notice {
+  background: #211e32;
+  border: 1px solid #66568c;
+  border-radius: 10px;
+  padding: 16px 20px;
+  color: #dfd6f3;
+}
+.canva-notice p {
+  margin: 5px 0 0;
+}
+.canva-admin-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+}
+.canva-counts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  padding: 28px 0;
+}
+.canva-counts > div {
+  border-left: 2px solid #8572b1;
+  padding-left: 18px;
+}
+.canva-counts span {
+  display: block;
+  color: var(--muted);
+}
+.canva-counts strong {
+  font-size: 30px;
+  font-variant-numeric: tabular-nums;
+}
+.canva-panel {
+  padding: 24px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.canva-generate {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.canva-generate input {
+  width: 100px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px;
+  border-radius: 8px;
+}
+.canva-generated {
+  margin-top: 24px;
+}
+.canva-generated > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.canva-generated textarea {
+  width: 100%;
+  margin-top: 12px;
+  padding: 16px;
+  background: var(--background);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: monospace;
+  line-height: 1.8;
+}
+.canva-table-scroll {
+  overflow: auto;
+}
+.canva-admin table {
+  width: 100%;
+  text-align: left;
+  border-collapse: collapse;
+}
+.canva-admin th,
+.canva-admin td {
+  padding: 14px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.canva-admin th {
+  color: var(--muted);
+  font-weight: 500;
+}
+.canva-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 20px;
+}
+.canva-queue-steps {
+  display: flex;
+  list-style: none;
+  gap: 8px;
+  padding: 0;
+  margin: 20px 0;
+  font-size: 12px;
+}
+.canva-queue-steps li {
+  flex: 1;
+  border-top: 3px solid #343446;
+  padding-top: 8px;
+}
+.canva-queue-steps li[aria-current="step"] {
+  border-color: #b59aff;
+  color: #d1c0ff;
+  font-weight: 600;
+}
+@media (max-width: 760px) {
+  .canva-invite-layout {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    padding: 40px 0;
+  }
+  .canva-public {
+    padding: 24px 18px;
+  }
+  .canva-form {
+    padding: 24px;
+  }
+  .canva-admin-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .canva-counts {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .canva-panel {
+    padding: 16px;
+  }
+}

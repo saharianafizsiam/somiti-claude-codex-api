@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./canva/canva.css";
 :root {
   --background: #0c1017;
   --panel: #121923;

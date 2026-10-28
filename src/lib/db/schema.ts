@@ -283,3 +283,46 @@ export const settings = pgTable("settings", {
 });
 export type ApiKey = typeof apiKeys.$inferSelect;
 export type Model = typeof models.$inferSelect;
+export const canvaCodes = pgTable("canva_codes", {
+  id: id(),
+  codeHash: text("code_hash").notNull().unique(),
+  encryptedCode: text("encrypted_code").notNull(),
+  email: text(),
+  status: text().notNull().default("UNUSED"),
+  createdBy: uuid("created_by")
+    .notNull()
+    .references(() => users.id),
+  createdAt: created(),
+  invitedAt: timestamp("invited_at", { withTimezone: true }),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+});
+export const canvaQueueLock = pgTable("canva_queue_lock", {
+  id: integer().primaryKey(),
+});
+export const canvaJobs = pgTable(
+  "canva_jobs",
+  {
+    id: id(),
+    sequence: integer().generatedAlwaysAsIdentity().notNull().unique(),
+    codeId: uuid("code_id")
+      .notNull()
+      .unique()
+      .references(() => canvaCodes.id),
+    email: text().notNull(),
+    status: text().notNull().default("QUEUED"),
+    claimToken: text("claim_token"),
+    createdAt: created(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("canva_jobs_queue_idx").on(t.status, t.sequence),
+    uniqueIndex("canva_jobs_one_active_idx")
+      .on(t.status)
+      .where(sql`${t.status} = 'PROCESSING'`),
+    check(
+      "canva_job_status",
+      sql`${t.status} in ('QUEUED', 'PROCESSING', 'SENT', 'REVIEW')`,
+    ),
+  ],
+);

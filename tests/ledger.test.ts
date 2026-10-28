@@ -36,6 +36,13 @@ import {
   recoverStale,
 } from "../src/lib/billing/ledger";
 import { adminAction } from "../src/server/admin";
+import { canvaAction, canvaOverview } from "../src/server/canva";
+import {
+  enqueueCanva,
+  canvaQueueStatus,
+  claimCanvaJob,
+  finishCanvaJob,
+} from "../src/server/canva-queue";
 import { authenticate, sharedKey, availableModels } from "../src/lib/api-keys";
 import { secret, hash, encrypt } from "../src/lib/security/secrets";
 import { rateLimit } from "../src/lib/rate-limit";
@@ -47,6 +54,139 @@ import { GET as modelsV2 } from "../src/app/v2/models/route";
 import { POST as chatV2 } from "../src/app/v2/chat/completions/route";
 import { requestLogs, usage } from "../src/server/queries";
 const pg = new PGlite();
+describe("Canva invitation queue", () => {
+  afterEach(() => {
+    delete process.env.CANVA_INVITES_ENABLED;
+  });
+  async function codes() {
+    return (
+      (await canvaAction("generate", { quantity: 3 })) as { codes: string[] }
+    ).codes;
+  }
+  it("preserves unused codes while delivery is disabled", async () => {
+    const [code] = await codes();
+    await expect(
+      enqueueCanva({ code, email: "a@example.test" }),
+    ).rejects.toThrow("not open");
+    expect((await canvaOverview()).totals.unused).toBe(3);
+  });
+  it("reserves once, rejects another email, and protects status access", async () => {
+    process.env.CANVA_INVITES_ENABLED = "true";
+    const [code] = await codes();
+    const [first, retry] = await Promise.all([
+      enqueueCanva({ code, email: "a@example.test" }),
+      enqueueCanva({ code, email: "a@example.test" }),
+    ]);
+    expect(first).toEqual(retry);
+    expect(await database.select().from(schema.canvaJobs)).toHaveLength(1);
+    await expect(
+      enqueueCanva({ code, email: "b@example.test" }),
+    ).rejects.toThrow("unavailable");
+    await expect(canvaQueueStatus({ ...first, token: "bad" })).rejects.toThrow(
+      "not found",
+    );
+    expect(await canvaQueueStatus(first)).toMatchObject({
+      status: "QUEUED",
+      position: 1,
+    });
+  });
+  it("claims only one job, advances positions after confirmed delivery, and acknowledges once", async () => {
+    process.env.CANVA_INVITES_ENABLED = "true";
+    const batch = await codes();
+    const receipts = [];
+    for (const code of batch)
+      receipts.push(await enqueueCanva({ code, email: "a@example.test" }));
+    expect(await canvaQueueStatus(receipts[2])).toMatchObject({ position: 3 });
+    const claims = await Promise.all([claimCanvaJob(), claimCanvaJob()]);
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    const job = claims.find(Boolean)!;
+    expect(job.id).toBe(receipts[0].id);
+    expect(await canvaQueueStatus(receipts[0])).toMatchObject({
+      status: "PROCESSING",
+      position: null,
+    });
+    await expect(
+      finishCanvaJob({
+        ...job,
+        claimToken: crypto.randomUUID(),
+        outcome: "SENT",
+      }),
+    ).rejects.toThrow("claim");
+    await finishCanvaJob({ ...job, outcome: "SENT" });
+    await finishCanvaJob({ ...job, outcome: "SENT" });
+    expect(await canvaQueueStatus(receipts[2])).toMatchObject({ position: 2 });
+    expect((await claimCanvaJob())?.id).toBe(receipts[1].id);
+  });
+  it("pauses on uncertain delivery and preserves the assignment", async () => {
+    process.env.CANVA_INVITES_ENABLED = "true";
+    const [a, b] = await codes();
+    await enqueueCanva({ code: a, email: "a@example.test" });
+    const waiting = await enqueueCanva({ code: b, email: "b@example.test" });
+    const job = (await claimCanvaJob())!;
+    await finishCanvaJob({ ...job, outcome: "REVIEW" });
+    expect(await claimCanvaJob()).toBeNull();
+    expect(await canvaQueueStatus(waiting)).toMatchObject({
+      paused: true,
+      position: 2,
+    });
+    expect(
+      (await canvaOverview()).rows.some(
+        (r) => r.status === "REVIEW" && r.email === "a@example.test",
+      ),
+    ).toBe(true);
+  });
+});
+describe("Canva code management", () => {
+  it("creates encrypted 16-digit codes and deletes only unused codes", async () => {
+    const result = (await canvaAction("generate", { quantity: 3 })) as {
+      codes: string[];
+    };
+    expect(result.codes).toHaveLength(3);
+    expect(new Set(result.codes).size).toBe(3);
+    for (const code of result.codes) expect(code).toMatch(/^\d{16}$/);
+    const stored = await database.select().from(schema.canvaCodes);
+    expect(JSON.stringify(stored)).not.toContain(result.codes[0]);
+    const overview = await canvaOverview();
+    expect(overview.totals.total).toBe(3);
+    await canvaAction("delete", { id: overview.rows[0].id });
+    expect((await canvaOverview()).totals.total).toBe(2);
+    await database
+      .update(schema.canvaCodes)
+      .set({ email: "student@example.test", status: "SENT" })
+      .where(eq(schema.canvaCodes.id, overview.rows[1].id));
+    await expect(
+      canvaAction("delete", { id: overview.rows[1].id }),
+    ).rejects.toThrow("Only unused");
+    await expect(
+      canvaAction("remove", { id: overview.rows[1].id }),
+    ).rejects.toThrow("Connect Canva");
+    expect(
+      (await canvaOverview()).rows.find((r) => r.id === overview.rows[1].id)
+        ?.email,
+    ).toBe("student@example.test");
+  });
+  it("validates batch size and isolates administrators", async () => {
+    await expect(canvaAction("generate", { quantity: 1001 })).rejects.toThrow();
+    await canvaAction("generate", { quantity: 1 });
+    const code = (await canvaOverview()).rows[0];
+    const [other] = await database
+      .insert(schema.users)
+      .values({
+        email: "other@example.test",
+        name: "Other",
+        passwordHash: "test",
+        role: "OWNER",
+      })
+      .returning();
+    state.user = { id: other.id, role: "OWNER" };
+    expect((await canvaOverview()).totals.total).toBe(0);
+    await expect(canvaAction("delete", { id: code.id })).rejects.toThrow();
+    state.user.role = "RESELLER";
+    await expect(canvaAction("generate", { quantity: 1 })).rejects.toThrow(
+      "Forbidden",
+    );
+  });
+});
 const database = drizzle(pg, { schema });
 let key: schema.ApiKey;
 let model: schema.Model;
@@ -158,13 +298,11 @@ describe("Gateway integration", () => {
     ).rejects.toThrow("Enter an upstream key");
   });
   beforeEach(async () => {
-    await database
-      .update(schema.apiKeys)
-      .set({
-        upstreamProvider: "mwapi",
-        encryptedUpstreamKey: encrypt("customer-specific-key"),
-        allocatedCredit: "0",
-      });
+    await database.update(schema.apiKeys).set({
+      upstreamProvider: "mwapi",
+      encryptedUpstreamKey: encrypt("customer-specific-key"),
+      allocatedCredit: "0",
+    });
     key.upstreamProvider = "mwapi";
     key.encryptedUpstreamKey = encrypt("customer-specific-key");
   });
@@ -207,12 +345,10 @@ describe("Gateway integration", () => {
     expect(Number(saved.creditUsed)).toBe(0);
   });
   it("Routes v2 using only the assigned customer credential", async () => {
-    await database
-      .update(schema.apiKeys)
-      .set({
-        upstreamProvider: "claude-n-codex",
-        encryptedUpstreamKey: encrypt("customer-specific-key"),
-      });
+    await database.update(schema.apiKeys).set({
+      upstreamProvider: "claude-n-codex",
+      encryptedUpstreamKey: encrypt("customer-specific-key"),
+    });
     await database.update(schema.models).set({ provider: "claude-n-codex" });
     vi.stubEnv("CLAUDE_N_CODEX_BASE_URL", "https://second.example");
     vi.stubEnv("CLAUDE_N_CODEX_CLAUDE_API_KEY", "second-claude-secret");

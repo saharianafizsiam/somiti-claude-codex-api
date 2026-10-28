@@ -7,6 +7,7 @@ import {
   List,
   Settings,
   ShieldCheck,
+  GraduationCap,
 } from "lucide-react";
 import { Logout } from "./actions";
 export function Brand({ name = "Somiti API" }: { name?: string }) {
@@ -20,6 +21,7 @@ export function Brand({ name = "Somiti API" }: { name?: string }) {
 const nav = [
   ["Overview", "", LayoutDashboard],
   ["API Keys", "keys", KeyRound],
+  ["Canva", "canva", GraduationCap],
   ["Models", "models", Box],
   ["Usage", "usage", Activity],
   ["Request Logs", "logs", List],
