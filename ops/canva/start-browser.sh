@@ -3,7 +3,9 @@ set -euo pipefail
 umask 077
 export DISPLAY=:92
 export XAUTHORITY=/var/lib/somiti-canva/Xauthority
-CHROME_BIN=/opt/somiti-canva/browsers/chromium-1243/chrome-linux64/chrome
+# Google blocks sign-in from Chrome for Testing.  Use the ordinary, vendor-updated
+# Chrome package for the human owner login session.
+CHROME_BIN=/usr/bin/google-chrome-stable
 CHROME_PROFILE=/var/lib/somiti-canva/browser-profile
 touch "$XAUTHORITY"
 xauth -f "$XAUTHORITY" add "$DISPLAY" . "$(mcookie)"
