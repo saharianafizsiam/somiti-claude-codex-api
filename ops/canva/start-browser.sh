@@ -34,6 +34,8 @@ mkdir -p "$CHROME_PROFILE"
   --no-first-run \
   --no-default-browser-check \
   --password-store=basic \
+  --remote-debugging-address=127.0.0.1 \
+  --remote-debugging-port=9222 \
   --window-size=1280,800 \
   https://www.canva.com/login \
   >/var/lib/somiti-canva/chromium.log 2>&1 &

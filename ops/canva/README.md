@@ -1,8 +1,8 @@
 # Canva browser host
 
-The owner-login browser runs separately from the existing API and bots. It is not
-yet an invitation/removal adapter. Keep public redemption disabled until both
-operations are verified on the correct Education team with the Student role.
+The owner-login browser runs separately from the existing API and bots. Public
+redemption stays disabled until the serial worker passes a real Student
+invitation test on the correct Education team.
 
 ## Install on Ubuntu
 
@@ -41,6 +41,26 @@ The root production build applies only migrations 0005 and 0006 after validating
 the existing baseline migration timestamp. It holds the migration-table lock,
 uses bounded timeouts and records migrations transactionally. Failure stops the
 new Vercel build, leaving the previous deployment active. Local and preview builds
-do not change the database. `CANVA_INVITES_ENABLED` defaults to off. The worker
-secret and a tested delivery/removal adapter still need to be configured before
-customer redemption can be enabled.
+do not change the database. `CANVA_INVITES_ENABLED` defaults to off. A tested
+delivery adapter remains required before customer redemption can be enabled.
+
+## Serial invitation worker
+
+The worker attaches only to Chrome's locally bound debugging port, claims at
+most one job, and marks a job `SENT` only after Canva shows a visible delivery
+confirmation. Any uncertain result becomes `REVIEW` and blocks later jobs. It
+never retries a potentially delivered invitation.
+
+Create `/etc/somiti-canva-worker.env` as root with mode `600`:
+
+```ini
+CANVA_API_BASE=https://somiti.page
+CANVA_WORKER_SECRET=the-same-32-or-more-character-secret-configured-in-Vercel
+CANVA_CDP_URL=http://127.0.0.1:9222
+```
+
+Then enable it with `sudo systemctl enable --now somiti-canva-worker`. The
+debugging port binds only to `127.0.0.1`; never expose it through nginx, a
+security group or a public port. Keep `CANVA_INVITES_ENABLED` unset in Vercel
+until a real test invitation is confirmed. Team-member removal is not enabled
+by this worker.

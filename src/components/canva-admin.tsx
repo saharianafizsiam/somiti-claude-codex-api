@@ -70,11 +70,11 @@ export function CanvaAdmin({ data }: { data: Data }) {
         </Link>
       </div>
       <div className="canva-notice">
-        <strong>Canva connection needed</strong>
+        <strong>Invitation delivery is not enabled</strong>
         <p>
-          Codes can be prepared now. Invitation delivery and team removal stay
-          disabled until a supported connection or tested browser worker is
-          configured.
+          Codes can be prepared now. Customer redemption stays off until the
+          signed-in browser worker completes a verified Student invitation
+          test. Team removal remains disabled until it is separately verified.
         </p>
       </div>
       <div className="canva-counts">

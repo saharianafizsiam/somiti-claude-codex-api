@@ -29,6 +29,7 @@ PY
   chmod 600 /var/lib/somiti-canva/vnc.pass
 fi
 install -m 644 /opt/somiti-canva/somiti-canva-browser.service /etc/systemd/system/somiti-canva-browser.service
+install -m 644 /opt/somiti-canva/somiti-canva-worker.service /etc/systemd/system/somiti-canva-worker.service
 systemctl daemon-reload
 systemctl enable --now somiti-canva-browser.service
 systemctl is-active somiti-canva-browser.service

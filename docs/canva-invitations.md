@@ -1,8 +1,10 @@
 # Canva invitations — implementation status
 
-The code-management foundation is implemented locally. Automatic invitations and
-membership revocation are **not connected**. The public Get invite button is
-disabled, so no code can be consumed or customer falsely told an invite was sent.
+The code-management foundation and serial browser worker are implemented.
+Automatic invitations remain **disabled** until a real Student invitation is
+verified. Membership revocation is not connected. The public Get invite button
+stays disabled, so no code can be consumed or customer falsely told an invite
+was sent.
 
 ## Implemented
 
@@ -52,8 +54,12 @@ the UI shows a delivery delay. Operator reconciliation and removal jobs remain t
 be implemented. Do not log codes, receipts or worker credentials.
 
 Apply migration `0006_abnormal_the_captain.sql` after `0005_square_speedball.sql`.
-The AWS login browser is installed; it does not yet claim jobs. Existing API and
-bot services were not restarted. See `ops/canva/README.md` for service details.
+The AWS owner-login browser is installed. The serial worker can claim jobs only
+after its dedicated secret is configured in both Vercel and the private AWS
+environment. It attaches through a loopback-only browser port, sends only one
+Student invitation at a time, and stops the queue for manual review whenever a
+delivery result is uncertain. Existing API and bot services were not restarted.
+See `ops/canva/README.md` for service details.
 
 Production Vercel builds apply these additive migrations transactionally after
 checking the baseline history. Other build environments do not migrate databases.
