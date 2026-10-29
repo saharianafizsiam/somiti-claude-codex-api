@@ -1,0 +1,1 @@
+DROP INDEX "canva_jobs_one_active_idx";

@@ -48,31 +48,44 @@ async function canvaPage() {
   return page;
 }
 
-async function sendStudentInvitation(email) {
+async function sendStudentInvitations(emails) {
   const page = await canvaPage();
   await page.bringToFront();
+  // Discard stale form contents from a prior attempt before filling this batch.
+  await page.reload({ waitUntil: "domcontentloaded" });
 
   const openInvite = page.getByRole("button", { name: /^Invite students$/i });
   await openInvite.waitFor({ state: "visible", timeout: 15_000 });
   await openInvite.click();
 
-  const emailField = page.getByPlaceholder(/enter email address/i);
-  await emailField.waitFor({ state: "visible", timeout: 15_000 });
-  await emailField.fill(email);
-
-  const role = page.getByText(/^Student$/i);
-  if ((await role.count()) === 0) {
-    throw new Error("The Canva Student role was not available.");
+  const fields = page.getByPlaceholder(/enter email address/i);
+  for (let index = 0; index < emails.length; index++) {
+    const field = fields.nth(index);
+    await field.waitFor({ state: "visible", timeout: 15_000 });
+    await field.fill(emails[index]);
   }
+  // Verify every populated row and role before submitting the entire batch.
+  for (let index = 0; index < (await fields.count()); index++) {
+    const value = (await fields.nth(index).inputValue()).trim();
+    if (value !== (emails[index] ?? ""))
+      throw new Error("Unexpected email in invitation form.");
+  }
+  const roles = page.getByText(/^Student$/i);
+  if ((await roles.count()) !== (await fields.count()))
+    throw new Error(
+      "Student roles could not be verified for every invitation row.",
+    );
 
   const send = page
-    .getByRole("button", { name: /^(Send invites?|Send invitations?|Invite)$/i })
+    .getByRole("button", {
+      name: /^(Send invites?|Send invitations?|Invite)$/i,
+    })
     .first();
   await send.waitFor({ state: "visible", timeout: 10_000 });
   await send.click();
 
   const confirmation = page.getByText(
-    /invitation (has been )?sent|invited successfully/i,
+    /invitations? (?:(?:has|have) been )?sent|invited successfully/i,
   );
   await confirmation.waitFor({ state: "visible", timeout: 15_000 });
 }
@@ -80,26 +93,35 @@ async function sendStudentInvitation(email) {
 async function processNextJob() {
   // Never reserve an email if the owner session has expired or Canva is closed.
   await canvaPage();
-  const { job } = await api("claim");
-  if (!job) return;
+  const { jobs } = await api("claim-batch");
+  if (!jobs?.length) return;
 
   let outcome = "REVIEW";
   try {
-    await sendStudentInvitation(job.email);
+    await sendStudentInvitations([...new Set(jobs.map((job) => job.email))]);
     outcome = "SENT";
   } catch {
     // An uncertain UI result must halt the queue; never risk a duplicate invite.
     console.error("Canva invitation needs manual review.");
   }
-  await api("finish", { id: job.id, claimToken: job.claimToken, outcome });
+  for (const job of jobs) {
+    await api("finish", { id: job.id, claimToken: job.claimToken, outcome });
+  }
 }
 
+let running = false;
 async function run() {
+  if (running) return;
+  running = true;
   try {
     await processNextJob();
   } catch {
     // Keep the browser session idle if it is disconnected. No job was claimed.
-    console.error("Canva worker is waiting for an available signed-in browser.");
+    console.error(
+      "Canva worker is waiting for an available signed-in browser.",
+    );
+  } finally {
+    running = false;
   }
 }
 

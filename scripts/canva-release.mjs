@@ -2,13 +2,13 @@ import { readMigrationFiles } from "drizzle-orm/migrator";
 import postgres from "postgres";
 import { pathToFileURL } from "node:url";
 
-// Additive Canva tables only. Existing API tables are never altered here.
+// Canva tables and queue indexes only. Existing API tables are never altered here.
 // Production build failure keeps the previous Vercel deployment serving traffic.
 export async function applyCanvaMigrations(client) {
   const migrations = readMigrationFiles({ migrationsFolder: "./drizzle" });
   const baseline = migrations[4];
-  const additions = migrations.slice(5, 7);
-  if (!baseline || additions.length !== 2)
+  const additions = migrations.slice(5, 8);
+  if (!baseline || additions.length !== 3)
     throw new Error("Canva migration files missing.");
   await client.begin(async (tx) => {
     await tx.unsafe("SET LOCAL lock_timeout = '5s'");

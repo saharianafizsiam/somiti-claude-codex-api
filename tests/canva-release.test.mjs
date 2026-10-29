@@ -34,7 +34,7 @@ it("adds only Canva tables, records migrations, and safely repeats", async () =>
           "SELECT count(*)::int AS count FROM drizzle.__drizzle_migrations",
         )
       ).rows[0].count,
-    ).toBe(7);
+    ).toBe(8);
     expect((await pg.query("SELECT id FROM canva_queue_lock")).rows[0].id).toBe(
       1,
     );

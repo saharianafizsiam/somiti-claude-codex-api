@@ -57,7 +57,10 @@ export function CanvaInvite({ enabled = false }: { enabled?: boolean }) {
   return (
     <section className="canva-form" aria-labelledby="invite-title">
       <h2 id="invite-title">Get your invitation</h2>
-      <p>One code. One email address. Invitations are sent one at a time.</p>
+      <p>
+        One code. One email address. Invitations are sent in batches of up to
+        five.
+      </p>
       <form
         onSubmit={async (e) => {
           e.preventDefault();

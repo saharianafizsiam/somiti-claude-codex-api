@@ -155,7 +155,10 @@ export async function canvaQueueStatus(input: unknown) {
   });
 }
 export async function claimCanvaJob() {
-  if (!canvaQueueEnabled()) return null;
+  return (await claimCanvaBatch(1))[0] ?? null;
+}
+export async function claimCanvaBatch(limit = 5) {
+  if (!canvaQueueEnabled()) return [];
   return locked(async (tx) => {
     const [active] = await tx
       .select()
@@ -168,8 +171,8 @@ export async function claimCanvaJob() {
       )
       .limit(1);
     // Never retry an uncertain browser action: it may already have sent the invite.
-    if (active) return null;
-    const [job] = await tx
+    if (active) return [];
+    const jobs = await tx
       .select()
       .from(canvaJobs)
       .where(
@@ -179,23 +182,25 @@ export async function claimCanvaJob() {
         ),
       )
       .orderBy(asc(canvaJobs.sequence))
-      .limit(1);
-    if (!job) return null;
+      .limit(Math.max(1, Math.min(5, limit)));
+    if (!jobs.length) return [];
     const claimToken = randomUUID();
-    await tx
-      .update(canvaJobs)
-      .set({ status: "PROCESSING", startedAt: new Date(), claimToken })
-      .where(eq(canvaJobs.id, job.id));
-    await tx
-      .update(canvaCodes)
-      .set({ status: "PROCESSING" })
-      .where(eq(canvaCodes.id, job.codeId));
-    return {
+    for (const job of jobs) {
+      await tx
+        .update(canvaJobs)
+        .set({ status: "PROCESSING", startedAt: new Date(), claimToken })
+        .where(eq(canvaJobs.id, job.id));
+      await tx
+        .update(canvaCodes)
+        .set({ status: "PROCESSING" })
+        .where(eq(canvaCodes.id, job.codeId));
+    }
+    return jobs.map((job) => ({
       id: job.id,
       email: job.email,
       claimToken,
       role: "Student" as const,
-    };
+    }));
   });
 }
 export async function finishCanvaJob(input: unknown) {

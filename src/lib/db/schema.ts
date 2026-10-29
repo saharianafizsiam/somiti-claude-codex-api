@@ -317,9 +317,6 @@ export const canvaJobs = pgTable(
   },
   (t) => [
     index("canva_jobs_queue_idx").on(t.status, t.sequence),
-    uniqueIndex("canva_jobs_one_active_idx")
-      .on(t.status)
-      .where(sql`${t.status} = 'PROCESSING'`),
     check(
       "canva_job_status",
       sql`${t.status} in ('QUEUED', 'PROCESSING', 'SENT', 'REVIEW')`,

@@ -47,7 +47,7 @@ delivery adapter remains required before customer redemption can be enabled.
 ## Serial invitation worker
 
 The worker attaches only to Chrome's locally bound debugging port, claims at
-most one job, and marks a job `SENT` only after Canva shows a visible delivery
+most five jobs as one exclusive batch, and marks jobs `SENT` only after Canva shows a visible delivery
 confirmation. Any uncertain result becomes `REVIEW` and blocks later jobs. It
 never retries a potentially delivered invitation.
 
