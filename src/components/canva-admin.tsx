@@ -36,9 +36,11 @@ export function CanvaAdmin({ data }: { data: Data }) {
       setMessage(
         name === "generate"
           ? `${d.codes.length} codes created.`
-          : name === "cancel"
-            ? "Request cancelled. Code disabled; Canva access is unchanged."
-            : "Code removed from this list. Canva access is unchanged.",
+          : name === "confirm-sent"
+            ? "Marked as sent. No invitation was resent."
+            : name === "cancel"
+              ? "Request cancelled. Code disabled; Canva access is unchanged."
+              : "Code removed from this list. Canva access is unchanged.",
       );
       router.refresh();
     } catch (e) {
@@ -188,6 +190,22 @@ export function CanvaAdmin({ data }: { data: Data }) {
                         }}
                       >
                         Cancel request
+                      </button>
+                    )}
+                    {r.status === "REVIEW" && (
+                      <button
+                        className="button button-ghost"
+                        disabled={busy}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Have you verified that ${r.email} received the Canva invitation or appears in Canva's pending invitations? This marks it sent without resending.`,
+                            )
+                          )
+                            void action("confirm-sent", { id: r.id });
+                        }}
+                      >
+                        Confirm sent
                       </button>
                     )}
                     <button

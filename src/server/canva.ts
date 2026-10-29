@@ -2,7 +2,7 @@ import { randomInt } from "node:crypto";
 import { and, count, desc, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { canvaCodes } from "@/lib/db/schema";
+import { canvaCodes, canvaJobs } from "@/lib/db/schema";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { decrypt, encrypt, hash } from "@/lib/security/secrets";
 import { audit } from "@/lib/billing/ledger";
@@ -83,6 +83,43 @@ export async function canvaAction(action: string, input: unknown) {
       );
     });
     return { codes: [...codes] };
+  }
+  if (action === "confirm-sent") {
+    const { id } = z.object({ id: z.uuid() }).parse(input);
+    await locked(async (tx) => {
+      const [entry] = await tx
+        .select()
+        .from(canvaCodes)
+        .where(
+          and(
+            eq(canvaCodes.id, id),
+            eq(canvaCodes.createdBy, user.id),
+            isNull(canvaCodes.deletedAt),
+          ),
+        )
+        .for("update");
+      if (!entry) throw new AppError("not_found", "Code not found.", 404);
+      if (entry.status === "SENT") return;
+      if (entry.status !== "REVIEW")
+        throw new AppError(
+          "invalid_state",
+          "Only review invitations can be confirmed as sent.",
+          409,
+        );
+      const [job] = await tx
+        .update(canvaJobs)
+        .set({ status: "SENT", finishedAt: new Date() })
+        .where(and(eq(canvaJobs.codeId, id), eq(canvaJobs.status, "REVIEW")))
+        .returning({ id: canvaJobs.id });
+      if (!job)
+        throw new AppError("invalid_state", "No review invitation found.", 409);
+      await tx
+        .update(canvaCodes)
+        .set({ status: "SENT", invitedAt: new Date() })
+        .where(eq(canvaCodes.id, id));
+      await audit(tx, user.id, "CANVA_CONFIRM_SENT", "canva_code", id);
+    });
+    return { ok: true };
   }
   if (action === "archive" || action === "cancel") {
     const { id } = z.object({ id: z.uuid() }).parse(input);

@@ -1,4 +1,5 @@
 import { chromium } from "playwright";
+import { sentConfirmation } from "./confirmation.mjs";
 
 const siteUrl = new URL(process.env.CANVA_API_BASE ?? "https://somiti.page");
 const workerSecret = process.env.CANVA_WORKER_SECRET;
@@ -10,6 +11,7 @@ if (!workerSecret || workerSecret.length < 32) {
 }
 
 let browser;
+let stage = "idle";
 
 async function api(action, body) {
   const response = await fetch(
@@ -49,16 +51,19 @@ async function canvaPage() {
 }
 
 async function sendStudentInvitations(emails) {
+  stage = "open-browser";
   const page = await canvaPage();
   await page.bringToFront();
   // Discard stale form contents from a prior attempt before filling this batch.
   await page.reload({ waitUntil: "domcontentloaded" });
+  stage = "open-invitation-form";
 
   const openInvite = page.getByRole("button", { name: /^Invite students$/i });
   await openInvite.waitFor({ state: "visible", timeout: 15_000 });
   await openInvite.click();
 
   const fields = page.getByPlaceholder(/enter email address/i);
+  stage = "fill-and-verify-recipients";
   for (let index = 0; index < emails.length; index++) {
     const field = fields.nth(index);
     await field.waitFor({ state: "visible", timeout: 15_000 });
@@ -82,12 +87,21 @@ async function sendStudentInvitations(emails) {
     })
     .first();
   await send.waitFor({ state: "visible", timeout: 10_000 });
+  stage = "await-send-confirmation";
+  // Start watching before clicking: transient notices can disappear during click completion.
+  // first() also avoids strict-mode errors when a toast has an accessible duplicate.
+  const confirmation = page.getByText(sentConfirmation).first();
+  if (await confirmation.isVisible())
+    throw new Error("Stale confirmation is visible before sending.");
+  const confirmed = confirmation
+    .waitFor({ state: "visible", timeout: 30_000 })
+    .then(
+      () => true,
+      () => false,
+    );
   await send.click();
-
-  const confirmation = page.getByText(
-    /invitations? (?:(?:has|have) been )?sent|invited successfully/i,
-  );
-  await confirmation.waitFor({ state: "visible", timeout: 15_000 });
+  if (!(await confirmed))
+    throw new Error("No explicit send confirmation appeared.");
 }
 
 async function processNextJob() {
@@ -100,9 +114,11 @@ async function processNextJob() {
   try {
     await sendStudentInvitations([...new Set(jobs.map((job) => job.email))]);
     outcome = "SENT";
-  } catch {
+  } catch (error) {
     // An uncertain UI result must halt the queue; never risk a duplicate invite.
-    console.error("Canva invitation needs manual review.");
+    console.error(
+      `Canva invitation needs manual review at ${stage} (${error?.name ?? "Error"}).`,
+    );
   }
   for (const job of jobs) {
     await api("finish", { id: job.id, claimToken: job.claimToken, outcome });

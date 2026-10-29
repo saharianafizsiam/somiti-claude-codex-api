@@ -56,6 +56,33 @@ import { POST as chatV2 } from "../src/app/v2/chat/completions/route";
 import { requestLogs, usage } from "../src/server/queries";
 const pg = new PGlite();
 describe("Canva invitation queue", () => {
+  it("reconciles an owner-verified review without resending and releases the queue", async () => {
+    process.env.CANVA_INVITES_ENABLED = "true";
+    const batch = await codes();
+    const receipt = await enqueueCanva({
+      code: batch[0],
+      email: "verified@example.test",
+    });
+    await enqueueCanva({ code: batch[1], email: "next@example.test" });
+    const id = (await canvaOverview()).rows.find(
+      (r) => r.code === batch[0],
+    )!.id;
+    const job = (await claimCanvaJob())!;
+    await expect(canvaAction("confirm-sent", { id })).rejects.toThrow(
+      "Only review",
+    );
+    await finishCanvaJob({ ...job, outcome: "REVIEW" });
+    const owner = state.user.id;
+    state.user.id = crypto.randomUUID();
+    await expect(canvaAction("confirm-sent", { id })).rejects.toThrow(
+      "Code not found",
+    );
+    state.user.id = owner;
+    await canvaAction("confirm-sent", { id });
+    await canvaAction("confirm-sent", { id });
+    expect(await canvaQueueStatus(receipt)).toMatchObject({ status: "SENT" });
+    expect((await claimCanvaJob())!.email).toBe("next@example.test");
+  });
   it("claims at most five jobs as one exclusive batch and blocks until every result is settled", async () => {
     process.env.CANVA_INVITES_ENABLED = "true";
     const batch = (
