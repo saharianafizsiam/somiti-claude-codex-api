@@ -7,6 +7,7 @@ import { requireAdmin, requireUser } from "@/lib/auth";
 import { decrypt, encrypt, hash } from "@/lib/security/secrets";
 import { audit } from "@/lib/billing/ledger";
 import { AppError } from "@/lib/errors";
+import { locked, canvaQueueEnabled } from "@/server/canva-queue";
 
 export function newCanvaCode() {
   // Avoid ambiguous characters such as 0/O and 1/I in codes customers type.
@@ -44,6 +45,7 @@ export async function canvaOverview(page = 1) {
       .offset((page - 1) * 50),
   ]);
   return {
+    enabled: canvaQueueEnabled(),
     totals: totals[0],
     page,
     rows: rows.map((r) => ({
@@ -65,15 +67,13 @@ export async function canvaAction(action: string, input: unknown) {
     const codes = new Set<string>();
     while (codes.size < quantity) codes.add(newCanvaCode());
     await db().transaction(async (tx) => {
-      await tx
-        .insert(canvaCodes)
-        .values(
-          [...codes].map((code) => ({
-            codeHash: hash(`canva:${code}`),
-            encryptedCode: encrypt(code),
-            createdBy: user.id,
-          })),
-        );
+      await tx.insert(canvaCodes).values(
+        [...codes].map((code) => ({
+          codeHash: hash(`canva:${code}`),
+          encryptedCode: encrypt(code),
+          createdBy: user.id,
+        })),
+      );
       await audit(
         tx,
         user.id,
@@ -83,6 +83,51 @@ export async function canvaAction(action: string, input: unknown) {
       );
     });
     return { codes: [...codes] };
+  }
+  if (action === "archive" || action === "cancel") {
+    const { id } = z.object({ id: z.uuid() }).parse(input);
+    await locked(async (tx) => {
+      const [entry] = await tx
+        .select()
+        .from(canvaCodes)
+        .where(
+          and(
+            eq(canvaCodes.id, id),
+            eq(canvaCodes.createdBy, user.id),
+            isNull(canvaCodes.deletedAt),
+          ),
+        )
+        .for("update");
+      if (!entry) throw new AppError("not_found", "Code not found.", 404);
+      if (entry.status === "PROCESSING")
+        throw new AppError(
+          "busy",
+          "This invitation is being sent. Wait for it to finish before removing it.",
+          409,
+        );
+      if (action === "cancel" && !["QUEUED", "REVIEW"].includes(entry.status))
+        throw new AppError(
+          "invalid_state",
+          "Only queued or review requests can be cancelled.",
+          409,
+        );
+      await tx
+        .update(canvaCodes)
+        .set(
+          action === "archive"
+            ? { deletedAt: new Date() }
+            : { status: "CANCELLED" },
+        )
+        .where(eq(canvaCodes.id, id));
+      await audit(
+        tx,
+        user.id,
+        action === "archive" ? "CANVA_ARCHIVE_CODE" : "CANVA_CANCEL_INVITATION",
+        "canva_code",
+        id,
+      );
+    });
+    return { ok: true };
   }
   if (action === "delete") {
     const { id } = z.object({ id: z.uuid() }).parse(input);

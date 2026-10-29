@@ -55,6 +55,28 @@ import { POST as chatV2 } from "../src/app/v2/chat/completions/route";
 import { requestLogs, usage } from "../src/server/queries";
 const pg = new PGlite();
 describe("Canva invitation queue", () => {
+  it("cancels waiting and review jobs, protects active sends, and archives sent codes", async () => {
+    process.env.CANVA_INVITES_ENABLED = "true";
+    const batch = await codes();
+    const receipts = [];
+    for (const code of batch) receipts.push(await enqueueCanva({ code, email: "student@example.test" }));
+    const rows = (await canvaOverview()).rows;
+    const idFor = (code: string) => rows.find((r) => r.code === code)!.id;
+    await canvaAction("cancel", { id: idFor(batch[0]) });
+    expect(await canvaQueueStatus(receipts[0])).toMatchObject({ status: "CANCELLED" });
+    const job = (await claimCanvaJob())!;
+    expect(job.id).toBe(receipts[1].id);
+    await expect(canvaAction("archive", { id: idFor(batch[1]) })).rejects.toThrow("being sent");
+    await finishCanvaJob({ ...job, outcome: "REVIEW" });
+    await canvaAction("archive", { id: idFor(batch[1]) });
+    const last = (await claimCanvaJob())!;
+    expect(last.id).toBe(receipts[2].id);
+    await finishCanvaJob({ ...last, outcome: "SENT" });
+    await canvaAction("archive", { id: idFor(batch[2]) });
+    expect((await canvaOverview()).totals.total).toBe(1);
+    await expect(enqueueCanva({ code: batch[2], email: "student@example.test" })).rejects.toThrow("unavailable");
+    expect(await claimCanvaJob()).toBeNull();
+  });
   afterEach(() => {
     delete process.env.CANVA_INVITES_ENABLED;
   });

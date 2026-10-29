@@ -1,5 +1,5 @@
 import { timingSafeEqual, randomUUID } from "node:crypto";
-import { and, asc, count, eq, inArray, isNull, lt } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNull, lt, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { canvaCodes, canvaJobs, canvaQueueLock } from "@/lib/db/schema";
@@ -9,6 +9,14 @@ import { AppError } from "@/lib/errors";
 export function canvaQueueEnabled() {
   return process.env.CANVA_INVITES_ENABLED === "true";
 }
+function liveCodes() {
+  return db()
+    .select({ id: canvaCodes.id })
+    .from(canvaCodes)
+    .where(
+      and(isNull(canvaCodes.deletedAt), ne(canvaCodes.status, "CANCELLED")),
+    );
+}
 function token(id: string) {
   return hash(`canva-job:${id}`);
 }
@@ -17,7 +25,8 @@ export function secureEqual(a: string, b: string) {
     y = Buffer.from(b);
   return x.length === y.length && timingSafeEqual(x, y);
 }
-const invitationCode = /^(?:\d{16}|CANVA-INVITE-(?:[A-Z0-9]{6}-){4}[A-Z0-9]{6})$/;
+const invitationCode =
+  /^(?:\d{16}|CANVA-INVITE-(?:[A-Z0-9]{6}-){4}[A-Z0-9]{6})$/;
 const credentials = z.object({
   // Continue accepting the original numeric codes so existing batches remain usable.
   code: z.string().trim().toUpperCase().regex(invitationCode),
@@ -30,7 +39,7 @@ const credentials = z.object({
 });
 
 // Every queue mutation takes the same database row lock, across all app instances.
-async function locked<T>(
+export async function locked<T>(
   fn: (
     tx: Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0],
   ) => Promise<T>,
@@ -101,6 +110,17 @@ export async function canvaQueueStatus(input: unknown) {
       .from(canvaJobs)
       .where(eq(canvaJobs.id, auth.id));
     if (!job) throw new AppError("not_found", "Invitation not found.", 404);
+    const [code] = await tx
+      .select()
+      .from(canvaCodes)
+      .where(eq(canvaCodes.id, job.codeId));
+    if (code.deletedAt || code.status === "CANCELLED")
+      return {
+        status: "CANCELLED",
+        position: null,
+        paused: false,
+        delayed: false,
+      };
     const [ahead] = await tx
       .select({ value: count() })
       .from(canvaJobs)
@@ -108,12 +128,18 @@ export async function canvaQueueStatus(input: unknown) {
         and(
           lt(canvaJobs.sequence, job.sequence),
           inArray(canvaJobs.status, ["QUEUED", "PROCESSING", "REVIEW"]),
+          inArray(canvaJobs.codeId, liveCodes()),
         ),
       );
     const [review] = await tx
       .select()
       .from(canvaJobs)
-      .where(inArray(canvaJobs.status, ["PROCESSING", "REVIEW"]))
+      .where(
+        and(
+          inArray(canvaJobs.status, ["PROCESSING", "REVIEW"]),
+          inArray(canvaJobs.codeId, liveCodes()),
+        ),
+      )
       .limit(1);
     const delayed =
       !!review &&
@@ -134,14 +160,24 @@ export async function claimCanvaJob() {
     const [active] = await tx
       .select()
       .from(canvaJobs)
-      .where(inArray(canvaJobs.status, ["PROCESSING", "REVIEW"]))
+      .where(
+        and(
+          inArray(canvaJobs.status, ["PROCESSING", "REVIEW"]),
+          inArray(canvaJobs.codeId, liveCodes()),
+        ),
+      )
       .limit(1);
     // Never retry an uncertain browser action: it may already have sent the invite.
     if (active) return null;
     const [job] = await tx
       .select()
       .from(canvaJobs)
-      .where(eq(canvaJobs.status, "QUEUED"))
+      .where(
+        and(
+          eq(canvaJobs.status, "QUEUED"),
+          inArray(canvaJobs.codeId, liveCodes()),
+        ),
+      )
       .orderBy(asc(canvaJobs.sequence))
       .limit(1);
     if (!job) return null;

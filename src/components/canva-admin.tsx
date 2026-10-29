@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 type Data = {
+  enabled: boolean;
   totals: { total: number; unused: number; sent: number; assigned: number };
   page: number;
   rows: {
@@ -35,7 +36,9 @@ export function CanvaAdmin({ data }: { data: Data }) {
       setMessage(
         name === "generate"
           ? `${d.codes.length} codes created.`
-          : "Unused code deleted.",
+          : name === "cancel"
+            ? "Request cancelled. Code disabled; Canva access is unchanged."
+            : "Code removed from this list. Canva access is unchanged.",
       );
       router.refresh();
     } catch (e) {
@@ -70,11 +73,16 @@ export function CanvaAdmin({ data }: { data: Data }) {
         </Link>
       </div>
       <div className="canva-notice">
-        <strong>Invitation delivery is not enabled</strong>
+        <strong>
+          {data.enabled
+            ? "Invitation queue enabled"
+            : "Invitation delivery is not enabled"}
+        </strong>
         <p>
-          Codes can be prepared now. Customer redemption stays off until the
-          signed-in browser worker completes a verified Student invitation
-          test. Team removal remains disabled until it is separately verified.
+          Cancel removes a request from the queue and disables its code. Delete
+          code hides and disables the code. Neither action removes Canva team
+          access or revokes an invitation already sent. Sending requests must
+          finish before they can be removed.
         </p>
       </div>
       <div className="canva-counts">
@@ -166,23 +174,36 @@ export function CanvaAdmin({ data }: { data: Data }) {
                     >
                       Copy
                     </button>
-                    {r.status === "UNUSED" && !r.email ? (
+                    {["QUEUED", "REVIEW"].includes(r.status) && (
                       <button
                         className="button button-ghost"
                         disabled={busy}
-                        onClick={() => action("delete", { id: r.id })}
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              "Cancel this request and disable its code? Any Canva invitation already sent or team access will remain unchanged.",
+                            )
+                          )
+                            void action("cancel", { id: r.id });
+                        }}
                       >
-                        Delete unused
-                      </button>
-                    ) : (
-                      <button
-                        className="button button-ghost"
-                        disabled
-                        title="Connect Canva to revoke team access before clearing this code"
-                      >
-                        Remove access
+                        Cancel request
                       </button>
                     )}
+                    <button
+                      className="button button-ghost"
+                      disabled={busy || r.status === "PROCESSING"}
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            "Delete this code from Somiti and remove any waiting request? Canva membership and sent invitations will remain unchanged.",
+                          )
+                        )
+                          void action("archive", { id: r.id });
+                      }}
+                    >
+                      Delete code
+                    </button>
                   </td>
                 </tr>
               ))}

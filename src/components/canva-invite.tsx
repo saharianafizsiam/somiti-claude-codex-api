@@ -37,7 +37,7 @@ export function CanvaInvite({ enabled = false }: { enabled?: boolean }) {
         if (stopped) return;
         setStatus(next);
         setError("");
-        if (next.status === "SENT" || next.status === "REVIEW") return;
+        if (next.status === "SENT" || next.status === "CANCELLED") return;
       } catch (e) {
         if (!stopped)
           setError(
@@ -131,6 +131,8 @@ export function CanvaInvite({ enabled = false }: { enabled?: boolean }) {
               ) : (
                 "Sending your invitation…"
               )
+            ) : status.status === "CANCELLED" ? (
+              "This request was cancelled by your team administrator. Contact them for help."
             ) : status.status === "SENT" ? (
               "Invitation sent. Check your email to accept it."
             ) : (
