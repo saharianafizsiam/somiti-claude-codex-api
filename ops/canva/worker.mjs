@@ -66,7 +66,7 @@ async function sendStudentInvitation(email) {
   }
 
   const send = page
-    .getByRole("button", { name: /^(Send invite|Send invitation|Invite)$/i })
+    .getByRole("button", { name: /^(Send invites?|Send invitations?|Invite)$/i })
     .first();
   await send.waitFor({ state: "visible", timeout: 10_000 });
   await send.click();
