@@ -1,5 +1,8 @@
 import { readJson } from "@/lib/security/request-body";
 import { AppError, errorResponse } from "@/lib/errors";
+import { db } from "@/lib/db";
+import { canvaJobs } from "@/lib/db/schema";
+import { count, eq } from "drizzle-orm";
 import {
   claimCanvaJob,
   claimCanvaBatch,
@@ -19,6 +22,11 @@ export async function POST(
     )
       throw new AppError("unauthorized", "Unauthorized.", 401);
     const { action } = await context.params;
+    if (action === "status") {
+      const [result] = await db().select({ processing: count() }).from(canvaJobs)
+        .where(eq(canvaJobs.status, "PROCESSING"));
+      return Response.json(result, { headers: { "Cache-Control": "private, no-store" } });
+    }
     const result =
       action === "claim-batch"
         ? { jobs: await claimCanvaBatch() }
