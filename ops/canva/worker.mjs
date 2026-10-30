@@ -1,5 +1,5 @@
 import { chromium } from "playwright";
-import { sentConfirmation } from "./confirmation.mjs";
+import { sentConfirmation, watchConfirmation } from "./confirmation.mjs";
 
 const siteUrl = new URL(process.env.CANVA_API_BASE ?? "https://somiti.page");
 const workerSecret = process.env.CANVA_WORKER_SECRET;
@@ -88,20 +88,19 @@ async function sendStudentInvitations(emails) {
     .first();
   await send.waitFor({ state: "visible", timeout: 10_000 });
   stage = "await-send-confirmation";
-  // Start watching before clicking: transient notices can disappear during click completion.
-  // first() also avoids strict-mode errors when a toast has an accessible duplicate.
-  const confirmation = page.getByText(sentConfirmation).first();
-  if (await confirmation.isVisible())
-    throw new Error("Stale confirmation is visible before sending.");
-  const confirmed = confirmation
-    .waitFor({ state: "visible", timeout: 30_000 })
-    .then(
-      () => true,
-      () => false,
-    );
-  await send.click();
-  if (!(await confirmed))
-    throw new Error("No explicit send confirmation appeared.");
+  const watcher = await page.evaluateHandle(watchConfirmation, sentConfirmation.source);
+  try {
+    await send.click();
+    const deadline = Date.now() + 30_000;
+    do {
+      if (await watcher.evaluate((state) => state.confirmed)) return;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    } while (Date.now() < deadline);
+    throw new Error("No fresh send confirmation appeared.");
+  } finally {
+    await watcher.evaluate((state) => state.stop()).catch(() => {});
+    await watcher.dispose();
+  }
 }
 
 async function processNextJob() {

@@ -11,6 +11,8 @@ describe("Canva explicit send confirmation", () => {
       "Invitations successfully sent",
       "Successfully sent 5 invitations",
       "Invited successfully",
+      "2 invitations sent",
+      "Invite sent to student@example.com",
     ])
       expect(sentConfirmation.test(text)).toBe(true);
   });
@@ -22,6 +24,7 @@ describe("Canva explicit send confirmation", () => {
       "Failed to send invitations",
       "Templates",
       "Invitation pending",
+      "Error: invitations sent to no one",
     ])
       expect(sentConfirmation.test(text)).toBe(false);
   });
