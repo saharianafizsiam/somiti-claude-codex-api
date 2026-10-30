@@ -3,8 +3,6 @@ set -euo pipefail
 umask 077
 export DISPLAY=:92
 export XAUTHORITY=/var/lib/somiti-canva/Xauthority
-# Google blocks sign-in from Chrome for Testing.  Use the ordinary, vendor-updated
-# Chrome package for the human owner login session.
 CHROME_BIN=/usr/bin/google-chrome-stable
 CHROME_PROFILE=/var/lib/somiti-canva/browser-profile
 touch "$XAUTHORITY"
@@ -25,20 +23,21 @@ websockify 127.0.0.1:6083 127.0.0.1:5902 &
 wpid=$!
 node /opt/somiti-canva/viewer.mjs &
 hpid=$!
-# Launch Chromium directly instead of through Playwright.  Google sign-in rejects
-# browser sessions marked as automated; this remains an ordinary, user-operated
-# profile exposed only through the private VNC tunnel.
+node /opt/somiti-canva/proxy-rotator.mjs &
+rpid=$!
+# Launch Chromium with local rotating proxy forwarder.
 mkdir -p "$CHROME_PROFILE"
 "$CHROME_BIN" \
   --user-data-dir="$CHROME_PROFILE" \
   --no-first-run \
   --no-default-browser-check \
   --password-store=basic \
+  --proxy-server="http://127.0.0.1:8888" \
   --remote-debugging-address=127.0.0.1 \
   --remote-debugging-port=9222 \
   --window-size=1280,800 \
   https://www.canva.com/login \
   >/var/lib/somiti-canva/chromium.log 2>&1 &
 bpid=$!
-wait -n "$xpid" "$opid" "$vpid" "$wpid" "$hpid" "$bpid"
+wait -n "$xpid" "$opid" "$vpid" "$wpid" "$hpid" "$rpid" "$bpid"
 exit 1

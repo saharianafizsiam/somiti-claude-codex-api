@@ -16,6 +16,13 @@ let browser;
 let stage = "idle";
 let cooldownUntil = 0;
 
+async function rotateProxy() {
+  if (process.env.CANVA_PROXY_ROTATOR !== "true") return;
+  try {
+    await fetch(new URL("http://127.0.0.1:8888/_rotate"));
+  } catch {}
+}
+
 async function api(action, body) {
   const response = await fetch(
     new URL(`/api/canva/worker/${action}`, siteUrl),
@@ -55,7 +62,7 @@ async function canvaPage() {
 
 // Detect Canva-side security/rate blocks that prevent all invitations.
 const securityBlock =
-  /can'?t send your invitations? for security reasons|error code RRS-/i;
+  /security reasons|error code RRS|connect to a different Wi-Fi/i;
 
 async function sendStudentInvitations(emails) {
   stage = "open-browser";
@@ -114,11 +121,9 @@ async function sendStudentInvitations(emails) {
         return re.test(document.body.innerText);
       }, securityBlock.source);
       if (blocked) {
-        cooldownUntil = Date.now() + cooldownMs;
-        throw new Error(
-          "Canva is blocking invitations for security reasons. " +
-            "Cooling down for 5 minutes.",
-        );
+        // Rotate proxy immediately when blocked so next job gets a fresh IP
+        await rotateProxy();
+        throw new Error("Canva blocked invitation for security reasons. Rotated proxy.");
       }
       await new Promise((resolve) => setTimeout(resolve, 500));
     } while (Date.now() < deadline);
@@ -147,6 +152,8 @@ async function processNextJob() {
     );
   }
   await api("finish", { id: job.id, claimToken: job.claimToken, outcome });
+  // Rotate to next proxy for each invite (use them 1 by 1)
+  await rotateProxy();
 }
 
 let running = false;
