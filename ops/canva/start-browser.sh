@@ -3,7 +3,7 @@ set -euo pipefail
 umask 077
 export DISPLAY=:92
 export XAUTHORITY=/var/lib/somiti-canva/Xauthority
-CHROME_BIN=/usr/bin/google-chrome-stable
+CHROME_BIN=/usr/bin/brave-browser
 CHROME_PROFILE=/var/lib/somiti-canva/browser-profile
 touch "$XAUTHORITY"
 xauth -f "$XAUTHORITY" add "$DISPLAY" . "$(mcookie)"
@@ -31,6 +31,8 @@ mkdir -p "$CHROME_PROFILE"
   --user-data-dir="$CHROME_PROFILE" \
   --no-first-run \
   --no-default-browser-check \
+  --no-sandbox \
+  --disable-features=BraveNews,BraveRewards,BraveWallet \
   --password-store=basic \
   --proxy-server="http://127.0.0.1:8888" \
   --remote-debugging-address=127.0.0.1 \
