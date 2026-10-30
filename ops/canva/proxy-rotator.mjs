@@ -18,6 +18,7 @@ const proxies = [
 }));
 
 let currentIndex = 0;
+const activeSockets = new Set();
 
 function currentProxy() {
   return proxies[currentIndex];
@@ -27,6 +28,12 @@ export function rotateProxy() {
   currentIndex = (currentIndex + 1) % proxies.length;
   const p = proxies[currentIndex];
   console.log(`[Proxy Rotator] Switched to #${currentIndex + 1}: ${p.host}:${p.port}`);
+  for (const socket of activeSockets) {
+    try {
+      socket.destroy();
+    } catch {}
+  }
+  activeSockets.clear();
   return { index: currentIndex, host: p.host, port: p.port };
 }
 
@@ -113,6 +120,11 @@ server.on("connect", (req, clientSocket, head) => {
   clientSocket.on("error", () => {
     upstream.destroy();
   });
+});
+
+server.on("connection", (socket) => {
+  activeSockets.add(socket);
+  socket.on("close", () => activeSockets.delete(socket));
 });
 
 server.listen(8888, "127.0.0.1", () => {
