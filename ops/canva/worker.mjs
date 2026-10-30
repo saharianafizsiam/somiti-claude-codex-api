@@ -90,12 +90,20 @@ async function sendStudentInvitations(emails) {
   stage = "await-send-confirmation";
   const watcher = await page.evaluateHandle(watchConfirmation, sentConfirmation.source);
   try {
-    await send.click();
+    let clickError;
+    try {
+      await send.click();
+    } catch (error) {
+      // A successful browser action can still reject after the page updates.
+      // Keep observing the fresh confirmation before treating delivery as uncertain.
+      clickError = error;
+    }
     const deadline = Date.now() + 30_000;
     do {
       if (await watcher.evaluate((state) => state.confirmed)) return;
       await new Promise((resolve) => setTimeout(resolve, 100));
     } while (Date.now() < deadline);
+    if (clickError) throw clickError;
     throw new Error("No fresh send confirmation appeared.");
   } finally {
     await watcher.evaluate((state) => state.stop()).catch(() => {});
@@ -106,12 +114,12 @@ async function sendStudentInvitations(emails) {
 async function processNextJob() {
   // Never reserve an email if the owner session has expired or Canva is closed.
   await canvaPage();
-  const { jobs } = await api("claim-batch");
-  if (!jobs?.length) return;
+  const { job } = await api("claim");
+  if (!job) return;
 
   let outcome = "REVIEW";
   try {
-    await sendStudentInvitations([...new Set(jobs.map((job) => job.email))]);
+    await sendStudentInvitations([job.email]);
     outcome = "SENT";
   } catch (error) {
     // An uncertain UI result must halt the queue; never risk a duplicate invite.
@@ -119,9 +127,7 @@ async function processNextJob() {
       `Canva invitation needs manual review at ${stage} (${error?.name ?? "Error"}).`,
     );
   }
-  for (const job of jobs) {
-    await api("finish", { id: job.id, claimToken: job.claimToken, outcome });
-  }
+  await api("finish", { id: job.id, claimToken: job.claimToken, outcome });
 }
 
 let running = false;

@@ -7,6 +7,7 @@ describe("Canva explicit send confirmation", () => {
     for (const text of [
       "Invites sent",
       "Invitation sent",
+      "Invitation sent to test@ysscripts.dev",
       "Invitations have been sent",
       "Invitations successfully sent",
       "Successfully sent 5 invitations",

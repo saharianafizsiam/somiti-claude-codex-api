@@ -35,6 +35,11 @@ describe("Canva fresh confirmation watcher", () => {
     f.add(node("2 invitations sent"));
     expect(f.state.confirmed).toBe(true);
   });
+  it("captures the recipient-specific invitation confirmation", () => {
+    const f = fixture();
+    f.add(node("Invitation sent to test@ysscripts.dev"));
+    expect(f.state.confirmed).toBe(true);
+  });
   it("retains a brief accessible announcement after it disappears", () => {
     const f = fixture();
     const toast = node("Invite sent to student@example.com", { live: true, visible: false });
