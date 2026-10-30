@@ -5,6 +5,8 @@ const siteUrl = new URL(process.env.CANVA_API_BASE ?? "https://somiti.page");
 const workerSecret = process.env.CANVA_WORKER_SECRET;
 const cdpUrl = process.env.CANVA_CDP_URL ?? "http://127.0.0.1:9222";
 const pollMs = 10_000;
+// Back off when Canva blocks sends (security error, rate limit, etc.)
+const cooldownMs = 5 * 60_000;
 
 if (!workerSecret || workerSecret.length < 32) {
   throw new Error("CANVA_WORKER_SECRET must contain at least 32 characters.");
@@ -12,6 +14,7 @@ if (!workerSecret || workerSecret.length < 32) {
 
 let browser;
 let stage = "idle";
+let cooldownUntil = 0;
 
 async function api(action, body) {
   const response = await fetch(
@@ -49,6 +52,10 @@ async function canvaPage() {
   }
   return page;
 }
+
+// Detect Canva-side security/rate blocks that prevent all invitations.
+const securityBlock =
+  /can'?t send your invitations? for security reasons|error code RRS-/i;
 
 async function sendStudentInvitations(emails) {
   stage = "open-browser";
@@ -101,7 +108,19 @@ async function sendStudentInvitations(emails) {
     const deadline = Date.now() + 30_000;
     do {
       if (await watcher.evaluate((state) => state.confirmed)) return;
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Check for a security block so we can back off instead of retrying.
+      const blocked = await page.evaluate((pattern) => {
+        const re = new RegExp(pattern, "i");
+        return re.test(document.body.innerText);
+      }, securityBlock.source);
+      if (blocked) {
+        cooldownUntil = Date.now() + cooldownMs;
+        throw new Error(
+          "Canva is blocking invitations for security reasons. " +
+            "Cooling down for 5 minutes.",
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
     } while (Date.now() < deadline);
     if (clickError) throw clickError;
     throw new Error("No fresh send confirmation appeared.");
@@ -124,7 +143,7 @@ async function processNextJob() {
   } catch (error) {
     // An uncertain UI result must halt the queue; never risk a duplicate invite.
     console.error(
-      `Canva invitation needs manual review at ${stage} (${error?.name ?? "Error"}).`,
+      `Canva invitation needs manual review at ${stage} (${error?.message ?? error?.name ?? "Error"}).`,
     );
   }
   await api("finish", { id: job.id, claimToken: job.claimToken, outcome });
@@ -133,6 +152,7 @@ async function processNextJob() {
 let running = false;
 async function run() {
   if (running) return;
+  if (Date.now() < cooldownUntil) return;
   running = true;
   try {
     await processNextJob();

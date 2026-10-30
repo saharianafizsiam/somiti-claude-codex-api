@@ -121,35 +121,36 @@ export async function canvaQueueStatus(input: unknown) {
         paused: false,
         delayed: false,
       };
+    // Count only QUEUED and PROCESSING jobs ahead — REVIEW jobs no longer
+    // block the queue so they should not inflate the position counter.
     const [ahead] = await tx
       .select({ value: count() })
       .from(canvaJobs)
       .where(
         and(
           lt(canvaJobs.sequence, job.sequence),
-          inArray(canvaJobs.status, ["QUEUED", "PROCESSING", "REVIEW"]),
+          inArray(canvaJobs.status, ["QUEUED", "PROCESSING"]),
           inArray(canvaJobs.codeId, liveCodes()),
         ),
       );
-    const [review] = await tx
+    const [active] = await tx
       .select()
       .from(canvaJobs)
       .where(
         and(
-          inArray(canvaJobs.status, ["PROCESSING", "REVIEW"]),
+          eq(canvaJobs.status, "PROCESSING"),
           inArray(canvaJobs.codeId, liveCodes()),
         ),
       )
       .limit(1);
     const delayed =
-      !!review &&
-      review.status === "PROCESSING" &&
-      !!review.startedAt &&
-      Date.now() - review.startedAt.getTime() > 10 * 60_000;
+      !!active &&
+      !!active.startedAt &&
+      Date.now() - active.startedAt.getTime() > 10 * 60_000;
     return {
       status: job.status,
       position: job.status === "QUEUED" ? ahead.value + 1 : null,
-      paused: !canvaQueueEnabled() || review?.status === "REVIEW" || delayed,
+      paused: !canvaQueueEnabled() || delayed,
       delayed: job.status === "PROCESSING" && delayed,
     };
   });
@@ -160,18 +161,20 @@ export async function claimCanvaJob() {
 export async function claimCanvaBatch(limit = 5) {
   if (!canvaQueueEnabled()) return [];
   return locked(async (tx) => {
-    const [active] = await tx
+    // Block only while an invitation is actively being sent. REVIEW jobs need
+    // admin attention but must not freeze the rest of the queue — the worker
+    // processes one invite at a time and queued jobs advance past reviews.
+    const [processing] = await tx
       .select()
       .from(canvaJobs)
       .where(
         and(
-          inArray(canvaJobs.status, ["PROCESSING", "REVIEW"]),
+          eq(canvaJobs.status, "PROCESSING"),
           inArray(canvaJobs.codeId, liveCodes()),
         ),
       )
       .limit(1);
-    // Never retry an uncertain browser action: it may already have sent the invite.
-    if (active) return [];
+    if (processing) return [];
     const jobs = await tx
       .select()
       .from(canvaJobs)
