@@ -80,7 +80,7 @@ export async function enqueueCanva(input: unknown) {
       .select()
       .from(canvaJobs)
       .where(eq(canvaJobs.codeId, entry.id));
-    if (existing) return { id: existing.id, token: token(existing.id) };
+    if (existing) return { id: existing.id, token: token(existing.id), created: false };
     if (!canvaQueueEnabled())
       throw new AppError(
         "canva_offline",
@@ -97,7 +97,7 @@ export async function enqueueCanva(input: unknown) {
       .insert(canvaJobs)
       .values({ codeId: entry.id, email })
       .returning();
-    return { id: job.id, token: token(job.id) };
+    return { id: job.id, token: token(job.id), created: true };
   });
 }
 export async function canvaQueueStatus(input: unknown) {
