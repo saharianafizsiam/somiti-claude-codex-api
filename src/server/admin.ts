@@ -11,7 +11,13 @@ import {
   settings,
 } from "@/lib/db/schema";
 import { requireAdmin, requireUser } from "@/lib/auth";
-import { decrypt, encrypt, hash, secret } from "@/lib/security/secrets";
+import {
+  decrypt,
+  encrypt,
+  hash,
+  hashCandidates,
+  secret,
+} from "@/lib/security/secrets";
 import { addWallet, audit, transfer } from "@/lib/billing/ledger";
 import { AppError } from "@/lib/errors";
 import { amount, keyInput, modelInput } from "./validation";
@@ -340,7 +346,7 @@ export async function adminAction(action: string, input: unknown) {
       const [code] = await tx
         .select()
         .from(redeemCodes)
-        .where(eq(redeemCodes.codeHash, hash(data.code.trim())))
+        .where(inArray(redeemCodes.codeHash, hashCandidates(data.code.trim())))
         .for("update");
       if (
         !code ||

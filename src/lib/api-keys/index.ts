@@ -1,5 +1,5 @@
 import { importedCapabilities } from "../models/imported-capabilities";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import {
   apiKeys,
@@ -8,7 +8,7 @@ import {
   models,
   type ApiKey,
 } from "../db/schema";
-import { hash } from "../security/secrets";
+import { hashCandidates } from "../security/secrets";
 import { AppError } from "../errors";
 import { requestIp } from "../security/ip";
 import { canAccess } from "../models/access";
@@ -36,7 +36,7 @@ export async function authenticate(req: Request) {
   const [key] = await db()
     .select()
     .from(apiKeys)
-    .where(eq(apiKeys.keyHash, hash(value)))
+    .where(inArray(apiKeys.keyHash, hashCandidates(value)))
     .limit(1);
   validateKey(key, requestIp(req.headers));
   return key;
@@ -49,7 +49,7 @@ export async function sharedKey(token: string) {
     .innerJoin(apiKeys, eq(dashboardShares.apiKeyId, apiKeys.id))
     .where(
       and(
-        eq(dashboardShares.tokenHash, hash(token)),
+        inArray(dashboardShares.tokenHash, hashCandidates(token)),
         eq(dashboardShares.enabled, true),
       ),
     )

@@ -1,9 +1,9 @@
 import { cookies } from "next/headers";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { db } from "../db";
 import { sessions, users } from "../db/schema";
-import { hash } from "../security/secrets";
+import { hashCandidates } from "../security/secrets";
 import { AppError } from "../errors";
 export const sessionCookie =
   process.env.NODE_ENV === "production"
@@ -18,7 +18,7 @@ export async function currentUser() {
     .innerJoin(users, eq(sessions.userId, users.id))
     .where(
       and(
-        eq(sessions.tokenHash, hash(token)),
+        inArray(sessions.tokenHash, hashCandidates(token)),
         gt(sessions.expiresAt, new Date()),
       ),
     )

@@ -3,7 +3,7 @@ import { and, asc, count, eq, inArray, isNull, lt, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { canvaCodes, canvaJobs, canvaQueueLock } from "@/lib/db/schema";
-import { hash } from "@/lib/security/secrets";
+import { hash, hashCandidates } from "@/lib/security/secrets";
 import { AppError } from "@/lib/errors";
 
 export function canvaQueueEnabled() {
@@ -19,6 +19,9 @@ function liveCodes() {
 }
 function token(id: string) {
   return hash(`canva-job:${id}`);
+}
+function tokenCandidates(id: string) {
+  return hashCandidates(`canva-job:${id}`);
 }
 export function secureEqual(a: string, b: string) {
   const x = Buffer.from(a),
@@ -62,7 +65,7 @@ export async function enqueueCanva(input: unknown) {
       .from(canvaCodes)
       .where(
         and(
-          eq(canvaCodes.codeHash, hash(`canva:${code}`)),
+          inArray(canvaCodes.codeHash, hashCandidates(`canva:${code}`)),
           isNull(canvaCodes.deletedAt),
         ),
       )
@@ -101,7 +104,7 @@ export async function canvaQueueStatus(input: unknown) {
   const auth = z
     .object({ id: z.uuid(), token: z.string().max(256) })
     .parse(input);
-  if (!secureEqual(token(auth.id), auth.token))
+  if (!tokenCandidates(auth.id).some((candidate) => secureEqual(candidate, auth.token)))
     throw new AppError("not_found", "Invitation not found.", 404);
   // Snapshot position and state together so concurrent completions cannot distort it.
   return locked(async (tx) => {
